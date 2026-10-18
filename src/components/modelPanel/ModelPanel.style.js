@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-import { field, textButton } from "../../theme/controls.js";
+import { field, segmented, textButton } from "../../theme/controls.js";
 import { eyebrow } from "../../theme/type.js";
 
 const style = (Component) => styled(Component)`
@@ -12,71 +12,134 @@ const style = (Component) => styled(Component)`
     ${eyebrow}
   }
 
-  .group {
+  /* A card in dark is 1.1:1 from the ground: the hairline is what separates it. */
+  .card {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    min-width: 0;
-    margin: 0;
-    padding: 1.25rem 0 0;
-    border: 0;
-    border-top: 1px solid var(--color-hairline);
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--border-radius-md);
   }
 
-  /* A legend ignores the fieldset's flex gap: the toggle below it takes the space instead. */
-  .group legend {
-    float: left;
-    width: 100%;
-    padding: 0;
-  }
-
-  .toggle {
+  .card-head {
     display: flex;
     align-items: center;
-    gap: 0.625rem;
-    min-height: 44px;
-    font-family: var(--font-family-sansSerif);
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
-  .toggle input {
-    width: 1.125rem;
-    height: 1.125rem;
-    margin: 0;
-    accent-color: var(--color-primary);
+  .switch {
+    ${segmented}
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 0.75rem;
   }
 
   .field {
     display: flex;
     flex-direction: column;
     gap: 0.375rem;
+    min-width: 0;
   }
 
   label {
     font-family: var(--font-family-mono);
-    font-size: var(--font-size-small);
-    font-weight: var(--font-weight-bold);
-  }
-
-  .unit {
+    font-size: var(--font-size-tiny);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     color: var(--color-text-muted);
-    font-weight: var(--font-weight-regular);
   }
 
-  input[type="text"] {
+  .input {
+    position: relative;
+  }
+
+  input {
     ${field}
     width: 100%;
+    padding-right: 3.75rem;
+    font-family: var(--font-family-mono);
     font-variant-numeric: tabular-nums;
   }
 
+  .unit {
+    position: absolute;
+    top: 50%;
+    right: 0.625rem;
+    transform: translateY(-50%);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-tiny);
+    color: var(--color-text-muted);
+    pointer-events: none;
+  }
+
   .help {
+    display: none;
     font-size: var(--font-size-tiny);
     color: var(--color-text-muted);
   }
 
+  .field:focus-within .help,
+  .help.error {
+    display: block;
+  }
+
   .help.error {
     color: var(--color-behind-text);
+  }
+
+  .off {
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
+  }
+
+  .totals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-hairline);
+  }
+
+  .totals dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+  }
+
+  /* Trail Suite's small stat: the value over its label. */
+  .totals dl div {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .totals dt {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-tiny);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .totals dd {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-medium);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .reset {

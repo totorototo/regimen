@@ -82,3 +82,67 @@ export const field = css`
     border-color: var(--color-behind-text);
   }
 `;
+
+// Trail Suite's segmented switch: two or three options in one outline, the picked one tinted
+// and marked with aria-pressed. Raised to the 44px target.
+export const segmented = css`
+  display: inline-flex;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--border-radius-base);
+  overflow: hidden;
+
+  button {
+    min-width: 4rem;
+    min-height: 44px;
+    padding: 0.25rem 0.875rem;
+    background: none;
+    border: 0;
+    color: var(--color-text-faint);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-tiny);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    transition: color var(--transition-base);
+  }
+
+  button:hover {
+    color: var(--color-primary-text);
+  }
+
+  button[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
+    color: var(--color-text);
+  }
+
+  button:focus-visible {
+    outline-offset: -2px;
+  }
+`;
+
+// Trail Suite's status badge: a mono pill naming the margin to a cutoff. Outlined, no fill:
+// the word and its border share the tier's text colour.
+export const badge = css`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: var(--border-radius-lg);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-tiny);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &.ok {
+    color: var(--color-success-text);
+  }
+
+  &.tight {
+    color: var(--color-primary-text);
+  }
+
+  &.over {
+    color: var(--color-behind-text);
+  }
+`;
