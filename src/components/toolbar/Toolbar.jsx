@@ -3,6 +3,7 @@ import { FileText } from "@styled-icons/feather/FileText";
 import { useState } from "react";
 
 import useStore from "../../store/store.js";
+import { MARK_PATH } from "../../theme/mark.js";
 import { download } from "../../utils/download.js";
 import OpenCourse from "../openFile/OpenCourse.jsx";
 import OpenFile from "../openFile/OpenFile.jsx";
@@ -11,6 +12,9 @@ import style from "./Toolbar.style.js";
 function Brand() {
   return (
     <span className="brand">
+      <svg className="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <path d={MARK_PATH} fillRule="evenodd" />
+      </svg>
       <span>
         <span className="brand-dim">regi</span>men
       </span>
