@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { chip, chipPrimary } from "../../theme/controls.js";
 import { wordmark } from "../../theme/type.js";
 
-// Waymark's masthead, without the mark: the name, then the files, then the main action.
+// Waymark's masthead: the mark and name, then the files, then the main action.
 const style = (Component) => styled(Component)`
   display: flex;
   flex-wrap: wrap;
@@ -25,8 +25,22 @@ const style = (Component) => styled(Component)`
     ${wordmark}
     display: flex;
     align-items: center;
+    gap: 0.625rem;
     min-height: 44px;
     margin-right: 0.5rem;
+  }
+
+  /* The sachet starts 14 of the mark's 64 in: pulled back to line up with the text below. */
+  .mark {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin-left: calc(-44px * 14 / 64);
+  }
+
+  /* One ink, as the favicon's: dark's primary is its gold, light's its blue. */
+  .mark path {
+    fill: var(--color-primary);
   }
 
   .brand-dim {
