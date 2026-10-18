@@ -12,8 +12,9 @@ uploaded.
 
 A plan is a standalone document for one course, separate from the GPX. It records the pace
 model's inputs, the SHA-256 of the course's bytes (so a plan for another or edited file is
-detected), and the arrival, stop and cutoff margin at each checkpoint. The schema is gpxz's
-(`src/plan.zig`).
+detected), and the arrival, stop and cutoff margin at each checkpoint. With fueling on, it also
+records hourly carbs, fluid and sodium, where each checkpoint refills (none, water or full),
+and what to leave each refill point with. The schema is gpxz's (`src/plan.zig`, v2).
 
 ## Develop
 

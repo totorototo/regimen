@@ -42,3 +42,21 @@ export function formatMargin(seconds) {
   if (hours > 99) return `${sign}99h+`;
   return `${sign}${hours}h${String(minutes % 60).padStart(2, "0")}`;
 }
+
+// Millilitres as litres, rounded up to 10 ml: 1650 → "1.65 L", 900 → "0.9 L".
+// why up: gpxz rounds carry up so the runner is never short; the label must not undo it.
+export function formatLitres(ml) {
+  if (!Number.isFinite(ml)) return "–";
+  return `${Math.ceil(ml / 10) / 100} L`;
+}
+
+// What to leave a checkpoint with (plan.json's carry): "455 g · 1.65 L · 2.6 g Na" at a full
+// point, "0.9 L" at a water point, "–" where nothing is refilled.
+export function formatCarry(carry) {
+  if (!carry) return "–";
+  const parts = [];
+  if (carry.carbs_g !== null) parts.push(`${carry.carbs_g} g`);
+  parts.push(formatLitres(carry.fluid_ml));
+  if (carry.sodium_mg !== null) parts.push(`${Math.ceil(carry.sodium_mg / 100) / 10} g Na`);
+  return parts.join(" · ");
+}

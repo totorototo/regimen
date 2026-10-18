@@ -37,7 +37,9 @@ const bytes = await readFile(gpxPath);
 
 const { result: loaded } = await call("loadCourse", { gpx: buffer(bytes), settings: {} });
 const { plan } = loaded;
-assert.equal(plan.schema_version, 1);
+assert.equal(plan.schema_version, 2);
+assert.equal(plan.model.fueling, null, "no fueling unless asked");
+assert.deepEqual(plan.carry, []);
 assert.equal(plan.entries.length >= 2, true);
 assert.equal(plan.model.pace_base_s_per_km, 500, "an empty settings object is gpxz's defaults");
 assert(loaded.text.endsWith("}\n"), "the text is plan.json as gpxz writes it");
@@ -50,7 +52,7 @@ console.log(
 
 const slower = { pace_base_s_per_km: 600, fatigue_coefficient: 0.004, life_base_stop_s: 600 };
 const { result: rebuilt } = await call("buildPlan", { settings: slower });
-assert.deepEqual(rebuilt.plan.model, slower);
+assert.deepEqual(rebuilt.plan.model, { ...slower, fueling: null });
 assert(finish(rebuilt.plan) > finish(plan), "a slower model finishes later");
 assert.equal(rebuilt.plan.course.sha256, plan.course.sha256, "same course, same hash");
 console.log(`rebuilt at 10:00 /km: finish ${(finish(rebuilt.plan) / 3600).toFixed(2)} h`);
@@ -58,11 +60,40 @@ console.log(`rebuilt at 10:00 /km: finish ${(finish(rebuilt.plan) / 3600).toFixe
 const refused = await call("buildPlan", { settings: { pace_base_s_per_km: 0 } }, true);
 assert.match(refused.error, /settings invalid/i);
 
+// Fueling: empty supplies come back resolved to the course's defaults; a JS array of strings
+// crosses as []const Supply, and the wrong count is refused.
+const rates = { carbs_g_per_h: 70, fluid_ml_per_h: 500, sodium_mg_per_h: 400, reserve_s: 1800 };
+const fuelingDefault = { ...slower, fueling: { ...rates, supplies: [] } };
+const { result: fueled } = await call("buildPlan", { settings: fuelingDefault });
+const supplies = fueled.plan.model.fueling.supplies;
+assert.equal(supplies.length, fueled.plan.entries.length);
+assert.equal(supplies[0], "full", "the Start refills everything by default");
+assert.equal(fueled.plan.carry.length, fueled.plan.entries.length);
+assert(fueled.plan.carry[0].carbs_g > 0);
+const chosen = supplies.map((supply, index) => (index === 1 ? "water" : supply));
+const fuelingChosen = { ...slower, fueling: { ...rates, supplies: chosen } };
+const { result: watered } = await call("buildPlan", { settings: fuelingChosen });
+assert.deepEqual(watered.plan.model.fueling.supplies, chosen);
+assert.equal(watered.plan.carry[1].carbs_g, null, "a water point carries fluid only");
+assert(watered.plan.carry[1].fluid_ml > 0);
+const short = { ...slower, fueling: { ...rates, supplies: ["full"] } };
+const mismatch = await call("buildPlan", { settings: short }, true);
+assert.match(mismatch.error, /supplies mismatch/i);
+const tooMuch = { ...slower, fueling: { ...rates, carbs_g_per_h: 151, supplies: [] } };
+assert.match((await call("buildPlan", { settings: tooMuch }, true)).error, /settings invalid/i);
+console.log(
+  `fueling: supplies ${chosen.join(", ")}, leave the start with ${watered.plan.carry[0].carbs_g} g`,
+);
+const { result: reopened } = await call("openPlan", {
+  plan: buffer(new TextEncoder().encode(watered.text)),
+});
+assert.deepEqual(reopened.model.fueling.supplies, chosen);
+
 // The saved plan, read back against its own course, then against an edited one.
 const saved = new TextEncoder().encode(rebuilt.text);
 const { result: same } = await call("openPlan", { plan: buffer(saved) });
 assert.equal(same.course_matches, true);
-assert.deepEqual(same.model, slower);
+assert.deepEqual(same.model, { ...slower, fueling: null });
 
 const edited = Buffer.concat([bytes, Buffer.from("\n")]);
 await call("loadCourse", { gpx: buffer(edited), settings: {} });

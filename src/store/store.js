@@ -38,6 +38,10 @@ function remember(key, value) {
   }
 }
 
+// `settings` with the table's supplies, when fueling is on.
+const withSupplies = (settings, supplies) =>
+  settings.fueling ? { ...settings, fueling: { ...settings.fueling, supplies } } : settings;
+
 export const createStore = (getClient = createWorkerClient) => {
   let client = null;
   const worker = () => (client ??= getClient());
@@ -70,10 +74,11 @@ export const createStore = (getClient = createWorkerClient) => {
     }
 
     // Puts `settings` in the form and the model, and recomputes now: a model taken from a
-    // saved plan is one change, not typing.
+    // saved plan is one change, not typing. Its supplies become the table's.
     function applySettings(settings) {
       clearTimeout(planTimer);
-      set({ settings, form: formFromSettings(settings), formErrors: {} });
+      const supplies = settings.fueling?.supplies ?? [];
+      set({ settings, supplies, form: formFromSettings(settings), formErrors: {} });
       return computePlan();
     }
 
@@ -86,6 +91,9 @@ export const createStore = (getClient = createWorkerClient) => {
       settings: DEFAULT_SETTINGS,
       form: formFromSettings(DEFAULT_SETTINGS),
       formErrors: {},
+      // The refill the runner chose per checkpoint, or [] for the course's defaults. Kept
+      // while fueling is off, so turning it back on doesn't lose the choices.
+      supplies: [],
       // plan.json as gpxz wrote it, and parsed for the table.
       planText: null,
       plan: null,
@@ -103,7 +111,16 @@ export const createStore = (getClient = createWorkerClient) => {
       async openCourse(file) {
         const mine = ++generation;
         clearTimeout(planTimer);
-        set({ status: "loading", error: null, notice: null, fileName: file.name });
+        // Another course has other checkpoints: its refills start from its own defaults.
+        const settings = withSupplies(get().settings, []);
+        set({
+          status: "loading",
+          error: null,
+          notice: null,
+          fileName: file.name,
+          settings,
+          supplies: [],
+        });
         try {
           const buffer = await file.arrayBuffer();
           const { text, plan } = await worker().loadCourse(buffer, get().settings);
@@ -119,13 +136,25 @@ export const createStore = (getClient = createWorkerClient) => {
       // and the plan keeps the last valid model.
       setField(name, value) {
         const form = { ...get().form, [name]: value };
-        const result = settingsFromForm(form);
+        const result = settingsFromForm(form, get().supplies);
         if (result.errors) {
           set({ form, formErrors: result.errors });
           return;
         }
         set({ form, formErrors: {}, settings: result.settings });
         if (get().status === "ready") schedulePlan();
+      },
+
+      // One checkpoint's refill, from the table: the plan's resolved supplies with that one
+      // changed. A choice, not typing: recomputed now.
+      setSupply(index, supply) {
+        const { plan, settings } = get();
+        const resolved = plan?.model.fueling?.supplies;
+        if (!resolved || !settings.fueling) return undefined;
+        const supplies = resolved.with(index, supply);
+        clearTimeout(planTimer);
+        set({ supplies, settings: withSupplies(settings, supplies) });
+        return computePlan();
       },
 
       resetSettings() {
@@ -158,8 +187,13 @@ export const createStore = (getClient = createWorkerClient) => {
       async applyNoticeModel() {
         const { notice } = get();
         if (notice?.kind !== "mismatch") return;
-        set({ notice: { kind: "applied", fileName: notice.fileName } });
-        await applySettings({ ...notice.model });
+        // Supplies for another course's checkpoints: gpxz would refuse them (SuppliesMismatch)
+        // when the count differs, so the plan falls back to this course's defaults, and says so.
+        const { model } = notice;
+        const fits = model.fueling?.supplies.length === get().plan?.entries.length;
+        const suppliesReset = model.fueling != null && !fits;
+        set({ notice: { kind: "applied", fileName: notice.fileName, suppliesReset } });
+        await applySettings(suppliesReset ? withSupplies(model, []) : { ...model });
       },
 
       dismissNotice() {

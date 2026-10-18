@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../plan/settings.js";
+import { DEFAULT_FUELING, DEFAULT_SETTINGS } from "../plan/settings.js";
 import { createStore, PLAN_DELAY_MS } from "./store.js";
 
 const file = (name, text = "x") => ({
@@ -8,11 +8,18 @@ const file = (name, text = "x") => ({
   arrayBuffer: async () => new TextEncoder().encode(text).buffer,
 });
 
+// As gpxz resolves them: empty supplies are the course's defaults, one per entry.
+const SUPPLIES_DEFAULT = ["full", "none", "none"];
+const resolved = (model) =>
+  model.fueling?.supplies.length === 0
+    ? { ...model, fueling: { ...model.fueling, supplies: SUPPLIES_DEFAULT } }
+    : model;
 const plan = (model = DEFAULT_SETTINGS) => ({
-  schema_version: 1,
+  schema_version: 2,
   course: { name: "Test", sha256: "a".repeat(64), distance_m: 10000 },
-  model,
-  entries: [],
+  model: resolved(model),
+  entries: SUPPLIES_DEFAULT.map((_, index) => ({ name: `CP${index}` })),
+  carry: [],
 });
 const built = (model) => ({ text: JSON.stringify(plan(model)), plan: plan(model) });
 
@@ -130,7 +137,7 @@ describe("store", () => {
     await store.getState().openPlanFile(file("race.plan.json"));
     const state = store.getState();
     expect(state.notice).toEqual({ kind: "applied", fileName: "race.plan.json" });
-    expect(state.form).toEqual({ pace: "6:40", fatigue: "0.003", lifeBaseStopMin: "10" });
+    expect(state.form).toMatchObject({ pace: "6:40", fatigue: "0.003", lifeBaseStopMin: "10" });
     expect(state.plan.model.pace_base_s_per_km).toBe(400);
   });
 
@@ -149,6 +156,86 @@ describe("store", () => {
     expect(store.getState().settings.pace_base_s_per_km).toBe(400);
     store.getState().dismissNotice();
     expect(store.getState().notice).toBeNull();
+  });
+
+  it("turns fueling on with the course's default supplies, and off again", async () => {
+    const { store, client } = await ready();
+    store.getState().setField("fueling", true);
+    await vi.advanceTimersByTimeAsync(PLAN_DELAY_MS);
+    expect(client.buildPlan.mock.calls[0][0].fueling).toEqual({
+      carbs_g_per_h: 60,
+      fluid_ml_per_h: 500,
+      sodium_mg_per_h: 400,
+      reserve_s: 1800,
+      supplies: [],
+    });
+    expect(store.getState().plan.model.fueling.supplies).toEqual(SUPPLIES_DEFAULT);
+
+    store.getState().setField("fueling", false);
+    await vi.advanceTimersByTimeAsync(PLAN_DELAY_MS);
+    expect(client.buildPlan.mock.calls[1][0].fueling).toBeNull();
+  });
+
+  it("marks a fueling field out of bounds and keeps the last valid model", async () => {
+    const { store, client } = await ready();
+    store.getState().setField("fueling", true);
+    store.getState().setField("carbs", "500");
+    expect(store.getState().formErrors).toHaveProperty("carbs");
+    await vi.advanceTimersByTimeAsync(PLAN_DELAY_MS);
+    expect(client.buildPlan.mock.calls.at(-1)[0].fueling.carbs_g_per_h).toBe(60);
+  });
+
+  it("changes one refill from the plan's resolved supplies, and keeps it", async () => {
+    const { store, client } = await ready();
+    store.getState().setField("fueling", true);
+    await vi.advanceTimersByTimeAsync(PLAN_DELAY_MS);
+    await store.getState().setSupply(1, "water");
+    const supplies = ["full", "water", "none"];
+    expect(client.buildPlan.mock.calls.at(-1)[0].fueling.supplies).toEqual(supplies);
+    expect(store.getState().plan.model.fueling.supplies).toEqual(supplies);
+
+    // A change to a rate, or fueling off and on, keeps the choice.
+    store.getState().setField("fluid", "600");
+    store.getState().setField("fueling", false);
+    store.getState().setField("fueling", true);
+    await vi.advanceTimersByTimeAsync(PLAN_DELAY_MS);
+    expect(client.buildPlan.mock.calls.at(-1)[0].fueling).toMatchObject({
+      fluid_ml_per_h: 600,
+      supplies,
+    });
+  });
+
+  it("starts another course's refills from its defaults", async () => {
+    const { store, client } = await ready();
+    store.getState().setField("fueling", true);
+    await vi.advanceTimersByTimeAsync(PLAN_DELAY_MS);
+    await store.getState().setSupply(1, "water");
+    await store.getState().openCourse(file("other.gpx"));
+    expect(client.loadCourse.mock.calls.at(-1)[1].fueling.supplies).toEqual([]);
+    expect(store.getState().supplies).toEqual([]);
+  });
+
+  it("does nothing to refills while fueling is off", async () => {
+    const { store, client } = await ready();
+    await store.getState().setSupply(1, "water");
+    expect(client.buildPlan).not.toHaveBeenCalled();
+  });
+
+  it("takes a saved plan's supplies, or this course's defaults when they don't fit", async () => {
+    const fueling = { ...DEFAULT_FUELING, supplies: ["full", "water", "full"] };
+    const report = { ...(await fakeClient().openPlan()), model: { ...DEFAULT_SETTINGS, fueling } };
+    const same = await ready(fakeClient({ openPlan: vi.fn(async () => report) }));
+    await same.store.getState().openPlanFile(file("race.plan.json"));
+    expect(same.store.getState().supplies).toEqual(fueling.supplies);
+    expect(same.store.getState().form.fueling).toBe(true);
+
+    const longer = { ...fueling, supplies: [...fueling.supplies, "none"] };
+    const other = { ...report, course_matches: false, model: { ...report.model, fueling: longer } };
+    const { store, client } = await ready(fakeClient({ openPlan: vi.fn(async () => other) }));
+    await store.getState().openPlanFile(file("other.plan.json"));
+    await store.getState().applyNoticeModel();
+    expect(store.getState().notice).toMatchObject({ kind: "applied", suppliesReset: true });
+    expect(client.buildPlan.mock.calls.at(-1)[0].fueling.supplies).toEqual([]);
   });
 
   it("explains a plan gpxz refused", async () => {
