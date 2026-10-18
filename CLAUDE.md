@@ -1,0 +1,54 @@
+# regimen: project rules
+
+Web app that plans a trail race on a course from Waymark: the runner sets the pace model,
+sees each checkpoint's arrival, stop and cutoff margin, and exports `plan.json`. Fourth app
+after Terminus (run), Retrace (debrief) and Waymark (course). React 19 + styled-components +
+zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
+
+## The plan is gpxz's
+
+- The course is the extended GPX (facts: checkpoints, cutoffs, `<stopDuration>`). The plan is
+  `plan.json` (strategy for that course), defined, computed, written and read by gpxz
+  (`src/plan.zig` there). Several plans per course are fine.
+- No JavaScript reads GPX or builds a plan. The page hands bytes to the worker and gets back
+  plan.json's text, which it downloads as is and parses only to draw the table.
+- A plan names its course by the SHA-256 of the GPX's bytes. Opening a plan for another file
+  (or this one edited) is shown, never silently applied: the person chooses.
+- v1 edits the model only (`pace_base_s_per_km`, `fatigue_coefficient`, `life_base_stop_s`).
+  Per-checkpoint stops, per-segment pace targets and nutrition need gpxz (plan_compute's
+  inputs and a schema_version bump) first.
+
+## Zig side (`zig/`)
+
+- Don't vendor library code. gpxz is a dependency pinned in `build.zig.zon`.
+- `regimen.zig` is a thin boundary: bytes in, plan.json's bytes or JSON out. Exports are
+  camelCase (`buildPlan`, `openPlan`); internal functions are snake_case and take a scratch
+  and an output allocator. TIGER_STYLE as in gpxz: assertions, functions of at most 70 lines,
+  100 columns, tests for everything, `zig fmt`.
+- The WASM build is ReleaseSmall, where a failed assert is undefined behaviour: anything that
+  comes from the page (settings, files) is checked with errors. The settings bounds live in
+  `regimen.zig` and are mirrored in `src/plan/settings.js`; keep them in step.
+- Zigar builds the WASM module with its own build.zig, using `build.extra.zig` for imports
+  (`ignoreBuildFile: true`). `zig/build.zig` is only for `zig build test`.
+- Zig is not on every PATH: Zigar needs `zig` to run `vite build`.
+
+## JS side
+
+- Only the worker imports `.zig` files. Unit tests mock them; vitest.config.js stubs `.zig`
+  loads so Vitest never compiles Zig. The real boundary is `scripts/check-wasm.mjs`
+  (`npm run build`, then `npm run check:wasm`), and `e2e/` (`npm run e2e`) runs the built
+  app in Chromium.
+- The store recomputes the plan 200 ms after the last valid change to the model; a field that
+  doesn't parse is marked and the plan keeps the last valid model. Export computes a change
+  still waiting first, so the file matches the form.
+- The first checkpoint's margin is not shown: its `<time>` is the start, not a cutoff.
+- No map, PWA or agent tools yet (Waymark has all three, to copy when they're wanted).
+- Design system (Trail Suite): tokens come from `@totorototo/trail-tokens`;
+  `src/theme/Theme.js` only re-exports it. Never edit token values here. Shared control
+  styles are fragments in `src/theme/controls.js`. Component styles go in `*.style.js` next
+  to the component.
+
+## Data
+
+- Never commit a director's course or a runner's plan. `.gitignore` blocks `*.gpx` (except
+  the synthetic fixture in `zig/testdata/`) and `*.plan.json`.

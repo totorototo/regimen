@@ -1,0 +1,22 @@
+node_modules
+dist
+.zigar-cache
+zig/.zig-cache
+zig/zig-out
+zig/zig-pkg
+test-results
+playwright-report
+coverage
+.DS_Store
+
+# A race route is the director's file, a plan the runner's: not for this repo. The fixture
+# is synthetic.
+*.gpx
+!zig/testdata/*.gpx
+*.plan.json
+
+# Claude Code per-machine settings
+.claude/settings.local.json
+
+# Playwright MCP session logs
+.playwright-mcp

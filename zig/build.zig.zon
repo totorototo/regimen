@@ -1,0 +1,19 @@
+.{
+    .name = .regimen,
+    .version = "0.1.0",
+    .fingerprint = 0x2111188f6174cc63,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .gpxz = .{
+            .url = "git+https://github.com/totorototo/gpxz#48f02ffc304f1c30ffeedf52a1e079ee4ac1c4e3",
+            .hash = "gpxz-0.1.0-euMO4kXDBQCeZTZ5HVnMenJlLNziWZDvFwEQstF0plkk",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "build.extra.zig",
+        "regimen.zig",
+        "testdata",
+    },
+}
