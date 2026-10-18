@@ -1,8 +1,9 @@
-name: CI
+name: Deploy to Netlify
 
-# Waymark's checks without its deploy (no site yet): Zig tests, lint, formatting, unit
-# tests, a production build and the real WASM boundary (the built worker run in Node against
-# the synthetic fixture), then the Playwright tests on that build.
+# As Waymark's: Zig tests, lint, formatting, unit tests, a production build and the real WASM
+# boundary (the built worker run in Node against the synthetic fixture), then deploy dist/ to
+# Netlify once the Playwright tests pass on that build. Pull requests run the checks only.
+# No Lighthouse job yet.
 on:
   push:
     branches:
@@ -130,3 +131,33 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+  deploy:
+    # From main, pushed or run by hand; never from a pull request.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [build, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      # netlify.toml (headers, CSP, publish dir) comes from the checkout.
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: netlify deploy --dir=dist --prod

@@ -1,0 +1,21 @@
+# As Waymark's: GitHub Actions builds (it needs Zig), Netlify only serves dist/.
+[build]
+  command = ""
+  publish = "dist"
+
+# The CSP allows what regimen loads: its own code and WASM (Zigar compiles it at runtime,
+# hence 'wasm-unsafe-eval'; Zigar starts its worker from a blob: URL). No map, no fonts,
+# no analytics: nothing leaves the page, files are read and plans written locally.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
