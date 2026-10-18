@@ -1,5 +1,6 @@
 import styled from "styled-components";
 
+import { field } from "../../theme/controls.js";
 import { eyebrow } from "../../theme/type.js";
 
 const style = (Component) => styled(Component)`
@@ -74,6 +75,19 @@ const style = (Component) => styled(Component)`
     color: var(--color-text-muted);
   }
 
+  .refill select {
+    ${field}
+    font-family: var(--font-family-mono);
+  }
+
+  /* A refill the runner chose over the course's default. */
+  .refill select.changed {
+    border-color: var(--color-primary);
+    color: var(--color-primary-text);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .carry,
   .margin {
     font-family: var(--font-family-mono);
   }

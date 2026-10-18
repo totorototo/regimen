@@ -1,5 +1,12 @@
+import { SUPPLIES, supplyDefault } from "../../plan/settings.js";
 import useStore from "../../store/store.js";
-import { formatDuration, formatKm, formatMargin } from "../../utils/format.js";
+import {
+  formatCarry,
+  formatDuration,
+  formatKm,
+  formatLitres,
+  formatMargin,
+} from "../../utils/format.js";
 import style from "./PlanTable.style.js";
 
 // A margin under this is a cutoff the runner reaches with little room for a bad patch.
@@ -15,6 +22,24 @@ function marginClass(margin_s) {
   if (margin_s < 0) return "margin over";
   if (margin_s < MARGIN_TIGHT_S) return "margin tight";
   return "margin";
+}
+
+// What the race takes at the hourly targets, start to finish (no reserve: that is carried, not
+// eaten). Rounded up, as gpxz's carry.
+function FuelingTotals({ fueling, duration_s }) {
+  const hours = duration_s / 3600;
+  return (
+    <>
+      <div>
+        <dt>Carbs</dt>
+        <dd>{Math.ceil(fueling.carbs_g_per_h * hours)} g</dd>
+      </div>
+      <div>
+        <dt>Fluid</dt>
+        <dd>{formatLitres(Math.ceil(fueling.fluid_ml_per_h * hours))}</dd>
+      </div>
+    </>
+  );
 }
 
 function Summary({ plan }) {
@@ -46,7 +71,36 @@ function Summary({ plan }) {
         <dt>Cutoffs missed</dt>
         <dd className={missed > 0 ? "over" : undefined}>{missed}</dd>
       </div>
+      {plan.model.fueling && (
+        <FuelingTotals fueling={plan.model.fueling} duration_s={finish.duration_s_arrival} />
+      )}
     </dl>
+  );
+}
+
+// One checkpoint's refill. The last has none: nothing comes after it to carry for. A choice
+// other than the course's default is marked.
+function Refill({ entry, index, supply, last }) {
+  const setSupply = useStore((state) => state.setSupply);
+  if (last) return <td>–</td>;
+  const fallback = supplyDefault(entry);
+  const changed = supply !== fallback;
+  return (
+    <td className="refill">
+      <select
+        aria-label={`Refill at ${entry.name}`}
+        className={changed ? "changed" : undefined}
+        title={changed ? `Default: ${fallback}` : undefined}
+        value={supply}
+        onChange={(event) => setSupply(index, event.target.value)}
+      >
+        {SUPPLIES.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </td>
   );
 }
 
@@ -65,6 +119,8 @@ function PlanTable({ className }) {
     );
   }
   if (!plan) return null;
+  const fueling = plan.model.fueling;
+  const last = plan.entries.length - 1;
 
   return (
     <section
@@ -88,6 +144,14 @@ function PlanTable({ className }) {
               <th scope="col" title="Time to spare on the cutoff, after the stop">
                 Margin
               </th>
+              {fueling && (
+                <>
+                  <th scope="col">Refill</th>
+                  <th scope="col" title="What to leave with, until the next refill">
+                    Leave with
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -104,6 +168,17 @@ function PlanTable({ className }) {
                 <td className={marginClass(cutoffMargin(entry, index))}>
                   {formatMargin(cutoffMargin(entry, index))}
                 </td>
+                {fueling && (
+                  <>
+                    <Refill
+                      entry={entry}
+                      index={index}
+                      supply={fueling.supplies[index]}
+                      last={index === last}
+                    />
+                    <td className="carry">{formatCarry(plan.carry[index])}</td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>

@@ -22,7 +22,7 @@ export const entry = (overrides = {}) => ({
 });
 
 export const planFixture = {
-  schema_version: 1,
+  schema_version: 2,
   course: { name: "Synthetic 6K", sha256: "a".repeat(64), distance_m: 6000 },
   model: DEFAULT_SETTINGS,
   entries: [
@@ -49,6 +49,28 @@ export const planFixture = {
       duration_s_departure: 6000,
       margin_s: 600,
     }),
+  ],
+  carry: [],
+};
+
+// The same plan with fueling on: the Start full, the Refuge (a LifeBase, full by default)
+// changed to water.
+export const fueledPlanFixture = {
+  ...planFixture,
+  model: {
+    ...DEFAULT_SETTINGS,
+    fueling: {
+      carbs_g_per_h: 70,
+      fluid_ml_per_h: 500,
+      sodium_mg_per_h: 400,
+      reserve_s: 1800,
+      supplies: ["full", "water", "none"],
+    },
+  },
+  carry: [
+    { fluid_ml: 1250, carbs_g: 175, sodium_mg: 1000 },
+    { fluid_ml: 900, carbs_g: null, sodium_mg: null },
+    null,
   ],
 };
 

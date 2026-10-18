@@ -14,9 +14,17 @@ zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
   plan.json's text, which it downloads as is and parses only to draw the table.
 - A plan names its course by the SHA-256 of the GPX's bytes. Opening a plan for another file
   (or this one edited) is shown, never silently applied: the person chooses.
-- v1 edits the model only (`pace_base_s_per_km`, `fatigue_coefficient`, `life_base_stop_s`).
-  Per-checkpoint stops, per-segment pace targets and nutrition need gpxz (plan_compute's
-  inputs and a schema_version bump) first.
+- Regimen edits the model only (`pace_base_s_per_km`, `fatigue_coefficient`,
+  `life_base_stop_s`, and `fueling`), never the entries: gpxz computes those. plan.json is v2
+  (gpxz reads v1, writes v2 only).
+- Fueling is race strategy, so it lives in plan.json and never in the GPX. `fueling: null` is
+  off (the default). On, it has hourly carbs, fluid, sodium, a reserve, and `supplies`, one
+  per entry (`none` / `water` / `full`). The page sends `supplies: []` for the course's
+  defaults and draws the Refill selects from the resolved `model.fueling.supplies` that gpxz
+  sends back; `carry` (what to leave each refill with) is gpxz's, never computed here. The
+  page only mirrors `supplies_default` (Start and LifeBase full) to mark a changed refill.
+- Per-checkpoint stops and per-segment pace targets need gpxz (plan_compute's inputs and a
+  schema_version bump) first.
 
 ## Zig side (`zig/`)
 
@@ -28,6 +36,8 @@ zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
 - The WASM build is ReleaseSmall, where a failed assert is undefined behaviour: anything that
   comes from the page (settings, files) is checked with errors. The settings bounds live in
   `regimen.zig` and are mirrored in `src/plan/settings.js`; keep them in step.
+- Zigar converts a JS array of strings to `[]const Supply` and `null` to an optional struct,
+  so `PlanSettings.fueling` crosses as a plain object (checked in `check-wasm.mjs`).
 - Zigar builds the WASM module with its own build.zig, using `build.extra.zig` for imports
   (`ignoreBuildFile: true`). `zig/build.zig` is only for `zig build test`.
 - Zig is not on every PATH: Zigar needs `zig` to run `vite build`.

@@ -33,14 +33,62 @@ test("plan.json downloads with the model and the course's hash", async ({ page }
   expect(download.suggestedFilename()).toBe("route.plan.json");
   const text = await readDownload(download);
   const plan = JSON.parse(text);
-  expect(plan.schema_version).toBe(1);
+  expect(plan.schema_version).toBe(2);
   expect(plan.course.sha256).toBe(fixtureSha256);
   expect(plan.model).toEqual({
     pace_base_s_per_km: 450,
     fatigue_coefficient: 0.002,
     life_base_stop_s: 900,
+    fueling: null,
   });
+  expect(plan.carry).toEqual([]);
   expect(plan.entries.map((entry) => entry.name)).toEqual(["Start", "Refuge", "Finish"]);
+});
+
+test("fueling: targets, a refill changed per checkpoint, and what to leave with", async ({
+  page,
+}) => {
+  await openCourse(page);
+  await expect(page.getByRole("columnheader", { name: "Refill" })).toHaveCount(0);
+  await page.getByRole("checkbox", { name: /Plan what to eat and drink/ }).check();
+  await page.getByLabel(/Carbs/).fill("70");
+
+  // gpxz's defaults: the Start full, the Refuge (a time barrier) nothing.
+  const start = page.getByRole("combobox", { name: "Refill at Start" });
+  const refuge = page.getByRole("combobox", { name: "Refill at Refuge" });
+  await expect(start).toHaveValue("full");
+  await expect(refuge).toHaveValue("none");
+  const rows = page.getByRole("table").getByRole("row");
+  await expect(rows.nth(1).getByRole("cell").last()).toContainText(
+    /\d+ g · [\d.]+ L · [\d.]+ g Na/,
+  );
+  await expect(rows.nth(2).getByRole("cell").last()).toHaveText("–");
+
+  await refuge.selectOption("water");
+  await expect(refuge).toHaveClass(/changed/);
+  await expect(rows.nth(2).getByRole("cell").last()).toHaveText(/^[\d.]+ L$/);
+  await expect(page.locator("dt", { hasText: "Carbs" })).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: /Export plan.json/ }).click(),
+  ]);
+  const text = await readDownload(download);
+  const plan = JSON.parse(text);
+  expect(plan.model.fueling).toMatchObject({
+    carbs_g_per_h: 70,
+    supplies: ["full", "water", "none"],
+  });
+  expect(plan.carry).toHaveLength(3);
+  expect(plan.carry[1]).toMatchObject({ carbs_g: null, sodium_mg: null });
+
+  // Reopened on a fresh page: fueling and the chosen refill come back.
+  const saved = { name: "route.plan.json", mimeType: "application/json" };
+  saved.buffer = Buffer.from(text);
+  await openCourse(page);
+  await page.getByTestId("plan-input").setInputFiles(saved);
+  await expect(page.getByLabel(/Carbs/)).toHaveValue("70");
+  await expect(page.getByRole("combobox", { name: "Refill at Refuge" })).toHaveValue("water");
 });
 
 test("a saved plan reopens on its course, and asks on another", async ({ page }) => {

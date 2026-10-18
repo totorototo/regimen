@@ -25,11 +25,26 @@ else
 /// Multi-day ultra GPX files are a few MiB; as gpxz's CLI bounds them.
 pub const gpx_bytes_max = 64 * 1024 * 1024;
 
+const Supply = gpxz.fueling.Supply;
+
 /// The pace model's inputs, as JavaScript passes them. Missing fields take gpxz's defaults.
 pub const PlanSettings = struct {
     pace_base_s_per_km: f64 = gpxz.pace_model.pace_base_s_per_km_default,
     fatigue_coefficient: f64 = gpxz.pace_model.fatigue_coefficient_default,
     life_base_stop_s: u32 = gpxz.pace_model.life_base_stop_s_default,
+    /// Null when the runner plans no fueling.
+    fueling: ?FuelingSettings = null,
+};
+
+/// The runner's fueling, as JavaScript passes it: gpxz's `Fueling` with defaults, and
+/// `supplies` either one per checkpoint or empty, which means gpxz's defaults for the course
+/// (`supplies_default`). The page reads the resolved supplies back from the plan.
+pub const FuelingSettings = struct {
+    carbs_g_per_h: f64 = 0,
+    fluid_ml_per_h: f64 = 0,
+    sodium_mg_per_h: f64 = 0,
+    reserve_s: u32 = 0,
+    supplies: []const Supply = &.{},
 };
 
 /// The bounds a setting must fall in. They are errors, not asserts: the values come from a
@@ -40,6 +55,12 @@ pub const pace_base_s_per_km_min = 120.0;
 pub const pace_base_s_per_km_max = 3600.0;
 pub const fatigue_coefficient_max = 0.05;
 pub const life_base_stop_s_max: u32 = 24 * 3600;
+/// Fueling's form bounds, a first guess: gpxz only needs finite, non-negative rates. Past
+/// them a value is a typo (1500 g/h for 150), not a plan.
+pub const carbs_g_per_h_max = 150.0;
+pub const fluid_ml_per_h_max = 1500.0;
+pub const sodium_mg_per_h_max = 3000.0;
+pub const reserve_s_max: u32 = 180 * 60;
 
 // Exports (camelCase: these names are the JavaScript API)
 
@@ -81,6 +102,52 @@ fn settings_check(settings: *const PlanSettings) error{SettingsInvalid}!gpxz.Set
     return result;
 }
 
+fn fueling_check(fueling: *const FuelingSettings) error{SettingsInvalid}!void {
+    const rates = [_]struct { f64, f64 }{
+        .{ fueling.carbs_g_per_h, carbs_g_per_h_max },
+        .{ fueling.fluid_ml_per_h, fluid_ml_per_h_max },
+        .{ fueling.sodium_mg_per_h, sodium_mg_per_h_max },
+    };
+    // Written so NaN fails: every comparison with it is false.
+    for (rates) |rate| {
+        if (!(rate[0] >= 0 and rate[0] <= rate[1])) return error.SettingsInvalid;
+    }
+    if (fueling.reserve_s > reserve_s_max) return error.SettingsInvalid;
+}
+
+/// The fueling for `entries` and the carry it gives, allocated in `arena`. Empty supplies
+/// are the course's defaults; any other count than one per entry is the page's mistake (a
+/// plan for another course, or a stale form).
+fn fuel_plan_compute(
+    arena: std.mem.Allocator,
+    settings: *const FuelingSettings,
+    entries: []const gpxz.PlanEntry,
+) !gpxz.fueling.FuelPlan {
+    assert(entries.len >= 2);
+    const supplies: []const Supply = if (settings.supplies.len == 0) supplies: {
+        const supplies = try arena.alloc(Supply, entries.len);
+        gpxz.fueling.supplies_default(entries, supplies);
+        break :supplies supplies;
+    } else supplies: {
+        if (settings.supplies.len != entries.len) return error.SuppliesMismatch;
+        break :supplies settings.supplies;
+    };
+    const fueling: gpxz.fueling.Fueling = .{
+        .carbs_g_per_h = settings.carbs_g_per_h,
+        .fluid_ml_per_h = settings.fluid_ml_per_h,
+        .sodium_mg_per_h = settings.sodium_mg_per_h,
+        .reserve_s = settings.reserve_s,
+        .supplies = supplies,
+    };
+    assert(gpxz.fueling.fueling_valid(&fueling, entries.len));
+
+    const times = try arena.alloc(gpxz.fueling.Times, entries.len);
+    gpxz.fueling.times_from_entries(entries, times);
+    const carry = try arena.alloc(?gpxz.fueling.Carry, entries.len);
+    gpxz.fueling.carry_compute(times, &fueling, carry);
+    return .{ .fueling = fueling, .carry = carry };
+}
+
 fn plan_build(
     scratch: std.mem.Allocator,
     output: std.mem.Allocator,
@@ -89,6 +156,7 @@ fn plan_build(
 ) ![]u8 {
     if (gpx_bytes.len > gpx_bytes_max) return error.FileTooLarge;
     const gpxz_settings = try settings_check(&settings);
+    if (settings.fueling) |*fueling| try fueling_check(fueling);
     var data = try gpxz.parse(scratch, gpx_bytes, &gpxz_settings);
     defer data.deinit(scratch);
     // A plan needs a Start and somewhere to go: a file without two typed checkpoints is a
@@ -96,12 +164,19 @@ fn plan_build(
     const entries = data.plan orelse return error.CheckpointsTooFew;
     if (entries.len < 2) return error.CheckpointsTooFew;
 
+    var arena: std.heap.ArenaAllocator = .init(scratch);
+    defer arena.deinit();
+    const fuel_plan: ?gpxz.fueling.FuelPlan = if (settings.fueling) |*fueling|
+        try fuel_plan_compute(arena.allocator(), fueling, entries)
+    else
+        null;
     const plan = gpxz.plan_build(
         gpx_bytes,
         data.metadata.name,
         data.trace.distance_m,
         entries,
         &gpxz_settings,
+        if (fuel_plan) |*fuel| fuel else null,
     );
     var out: std.Io.Writer.Allocating = .init(output);
     errdefer out.deinit();
@@ -111,9 +186,10 @@ fn plan_build(
     return json;
 }
 
-/// What the page needs from a saved plan: the model to put back in the form, and whether the
-/// plan is for this course. The entries stay behind: the page recomputes them from the model,
-/// so what it shows is always gpxz's plan for the open file.
+/// What the page needs from a saved plan: the model to put back in the form (fueling and its
+/// supplies included), and whether the plan is for this course. The entries and the carry stay
+/// behind: the page recomputes them from the model, so what it shows is always gpxz's plan for
+/// the open file.
 const OpenReport = struct {
     course_matches: bool,
     course: gpxz.plan.Course,
@@ -215,6 +291,102 @@ test "buildPlan: settings at their bounds pass, one step past them fail" {
     }
 }
 
+const fueling_test: FuelingSettings = .{
+    .carbs_g_per_h = 70,
+    .fluid_ml_per_h = 500,
+    .sodium_mg_per_h = 400,
+    .reserve_s = 1800,
+};
+
+test "buildPlan: fueling off writes v2 with no fueling and no carry" {
+    const json = try build_test(.{});
+    defer testing.allocator.free(json);
+    const parsed = try gpxz.plan_read(testing.allocator, json);
+    defer parsed.deinit();
+    try testing.expectEqual(gpxz.plan.schema_version, parsed.value.schema_version);
+    try testing.expect(parsed.value.model.fueling == null);
+    try testing.expectEqual(@as(usize, 0), parsed.value.carry.len);
+}
+
+test "buildPlan: empty supplies are the course's defaults, with a carry per entry" {
+    const json = try build_test(.{ .fueling = fueling_test });
+    defer testing.allocator.free(json);
+    const parsed = try gpxz.plan_read(testing.allocator, json);
+    defer parsed.deinit();
+    const plan = &parsed.value;
+    const fueling = plan.model.fueling.?;
+
+    try testing.expectEqual(@as(f64, 70), fueling.carbs_g_per_h);
+    try testing.expectEqual(@as(u32, 1800), fueling.reserve_s);
+    // The fixture's Start is full; its Refuge is a TimeBarrier, which refills nothing.
+    try testing.expectEqualSlices(Supply, &.{ .full, .none, .none }, fueling.supplies);
+    try testing.expectEqual(@as(usize, 3), plan.carry.len);
+    try testing.expect(plan.carry[1] == null and plan.carry[2] == null);
+    // From the Start to the Finish (no refill on the way), plus the reserve, rounded up.
+    const leg_s = plan.entries[2].duration_s_arrival - plan.entries[0].duration_s_departure;
+    const carry = plan.carry[0].?;
+    try testing.expectEqual(@ceil(500 * (leg_s + 1800) / 3600), carry.fluid_ml);
+    try testing.expectEqual(@ceil(70 * (leg_s + 1800) / 3600), carry.carbs_g.?);
+    try testing.expectEqual(@ceil(400 * (leg_s + 1800) / 3600), carry.sodium_mg.?);
+}
+
+test "buildPlan: chosen supplies are kept, a water point carries fluid only" {
+    var fueling = fueling_test;
+    fueling.supplies = &.{ .full, .water, .none };
+    const json = try build_test(.{ .fueling = fueling });
+    defer testing.allocator.free(json);
+    const parsed = try gpxz.plan_read(testing.allocator, json);
+    defer parsed.deinit();
+    const plan = &parsed.value;
+
+    try testing.expectEqualSlices(Supply, fueling.supplies, plan.model.fueling.?.supplies);
+    const water = plan.carry[1].?;
+    try testing.expect(water.fluid_ml > 0);
+    try testing.expect(water.carbs_g == null and water.sodium_mg == null);
+    // The Refuge refills no food: the Start's carbs run to the Finish.
+    const to_finish_s = plan.entries[2].duration_s_arrival - plan.entries[0].duration_s_departure;
+    try testing.expectEqual(@ceil(70 * (to_finish_s + 1800) / 3600), plan.carry[0].?.carbs_g.?);
+}
+
+test "buildPlan: supplies other than one per checkpoint are a mismatch" {
+    const counts = [_][]const Supply{
+        &.{.full},
+        &.{ .full, .none },
+        &.{ .full, .none, .none, .full },
+    };
+    for (counts) |supplies| {
+        var fueling = fueling_test;
+        fueling.supplies = supplies;
+        try testing.expectError(error.SuppliesMismatch, build_test(.{ .fueling = fueling }));
+    }
+}
+
+test "buildPlan: fueling at its bounds passes, one step past them fails" {
+    const valid = [_]FuelingSettings{
+        .{},
+        .{ .carbs_g_per_h = carbs_g_per_h_max },
+        .{ .fluid_ml_per_h = fluid_ml_per_h_max },
+        .{ .sodium_mg_per_h = sodium_mg_per_h_max },
+        .{ .reserve_s = reserve_s_max },
+    };
+    for (valid) |fueling| testing.allocator.free(try build_test(.{ .fueling = fueling }));
+
+    const invalid = [_]FuelingSettings{
+        .{ .carbs_g_per_h = -1 },
+        .{ .carbs_g_per_h = carbs_g_per_h_max + 1 },
+        .{ .carbs_g_per_h = std.math.nan(f64) },
+        .{ .fluid_ml_per_h = -1 },
+        .{ .fluid_ml_per_h = fluid_ml_per_h_max + 1 },
+        .{ .fluid_ml_per_h = std.math.inf(f64) },
+        .{ .sodium_mg_per_h = -1 },
+        .{ .sodium_mg_per_h = sodium_mg_per_h_max + 1 },
+        .{ .reserve_s = reserve_s_max + 1 },
+    };
+    for (invalid) |fueling| {
+        try testing.expectError(error.SettingsInvalid, build_test(.{ .fueling = fueling }));
+    }
+}
+
 test "buildPlan: a route with fewer than two checkpoints has no plan" {
     const bare =
         \\<gpx><trk><trkseg>
@@ -263,6 +435,43 @@ test "openPlan: its own course matches, any other bytes do not" {
     try testing.expectEqual(@as(f64, 0.004), edited.value.model.fatigue_coefficient);
 }
 
+test "openPlan: the model carries fueling and its resolved supplies" {
+    var fueling = fueling_test;
+    fueling.supplies = &.{ .full, .water, .full };
+    const json = try build_test(.{ .fueling = fueling });
+    defer testing.allocator.free(json);
+
+    const report = try open_test(json, fixture_gpx);
+    defer report.deinit();
+    const model_fueling = report.value.model.fueling.?;
+    try testing.expectEqual(@as(f64, 500), model_fueling.fluid_ml_per_h);
+    try testing.expectEqualSlices(Supply, fueling.supplies, model_fueling.supplies);
+
+    const off = try build_test(.{});
+    defer testing.allocator.free(off);
+    const report_off = try open_test(off, fixture_gpx);
+    defer report_off.deinit();
+    try testing.expect(report_off.value.model.fueling == null);
+}
+
+test "openPlan: a v1 plan reads with fueling off" {
+    const json = try build_test(.{});
+    defer testing.allocator.free(json);
+    const v1 = try std.mem.replaceOwned(
+        u8,
+        testing.allocator,
+        json,
+        "\"schema_version\": 2",
+        "\"schema_version\": 1",
+    );
+    defer testing.allocator.free(v1);
+    try testing.expect(!std.mem.eql(u8, v1, json));
+    const report = try open_test(v1, fixture_gpx);
+    defer report.deinit();
+    try testing.expect(report.value.course_matches);
+    try testing.expect(report.value.model.fueling == null);
+}
+
 test "openPlan: gpxz's read errors reach the page" {
     const allocator = testing.allocator;
     try testing.expectError(
@@ -271,7 +480,7 @@ test "openPlan: gpxz's read errors reach the page" {
     );
     try testing.expectError(
         error.SchemaVersionUnsupported,
-        plan_open(allocator, allocator, "{\"schema_version\": 2}", fixture_gpx),
+        plan_open(allocator, allocator, "{\"schema_version\": 3}", fixture_gpx),
     );
 
     const json = try build_test(.{});

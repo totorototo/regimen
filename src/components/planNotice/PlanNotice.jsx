@@ -19,7 +19,11 @@ function PlanNotice({ className }) {
   if (notice.kind === "applied") {
     return (
       <div className={className} role="status">
-        <p>Opened {notice.fileName}: its model is in the form.</p>
+        <p>
+          Opened {notice.fileName}: its model is in the form.
+          {notice.suppliesReset &&
+            " Its refills were for other checkpoints, so this course's defaults are used."}
+        </p>
         {dismiss}
       </div>
     );

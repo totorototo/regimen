@@ -29,4 +29,29 @@ describe("ModelPanel", () => {
     expect(pace).toHaveAttribute("aria-invalid", "false");
     expect(useStore.getState().settings.pace_base_s_per_km).toBe(420);
   });
+
+  it("keeps fueling off until asked, then shows its four fields", () => {
+    render(<ModelPanel />);
+    const toggle = screen.getByRole("checkbox", { name: /Plan what to eat and drink/ });
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByLabelText(/Carbs/)).toBeNull();
+    expect(useStore.getState().settings.fueling).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(screen.getByRole("group", { name: "Fueling" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Carbs/)).toHaveValue("60");
+    expect(screen.getByLabelText(/Fluid/)).toHaveValue("500");
+    expect(screen.getByLabelText(/Sodium/)).toHaveValue("400");
+    expect(screen.getByLabelText(/Reserve/)).toHaveValue("30");
+    expect(useStore.getState().settings.fueling).toMatchObject({ reserve_s: 1800 });
+
+    const carbs = screen.getByLabelText(/Carbs/);
+    fireEvent.change(carbs, { target: { value: "200" } });
+    expect(carbs).toHaveAttribute("aria-invalid", "true");
+    expect(carbs).toHaveAccessibleDescription(/0 to 150/);
+
+    fireEvent.click(toggle);
+    expect(screen.queryByLabelText(/Carbs/)).toBeNull();
+    expect(useStore.getState().settings.fueling).toBeNull();
+  });
 });

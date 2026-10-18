@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDuration, formatKm, formatMargin, formatPace, parsePace } from "./format.js";
+import {
+  formatCarry,
+  formatDuration,
+  formatKm,
+  formatLitres,
+  formatMargin,
+  formatPace,
+  parsePace,
+} from "./format.js";
 
 describe("format", () => {
   it("writes distances in km", () => {
@@ -34,5 +42,23 @@ describe("format", () => {
     expect(formatMargin(-10)).toBe("0h00");
     expect(formatMargin(100 * 3600)).toBe("99h+");
     expect(formatMargin(null)).toBe("–");
+  });
+
+  it("writes litres rounded up to 10 ml", () => {
+    expect(formatLitres(1650)).toBe("1.65 L");
+    expect(formatLitres(900)).toBe("0.9 L");
+    expect(formatLitres(1651)).toBe("1.66 L");
+    expect(formatLitres(1000)).toBe("1 L");
+    expect(formatLitres(NaN)).toBe("–");
+  });
+
+  it("writes a carry by what the point refills", () => {
+    const full = { carbs_g: 455, fluid_ml: 1650, sodium_mg: 2600 };
+    expect(formatCarry(full)).toBe("455 g · 1.65 L · 2.6 g Na");
+    expect(formatCarry({ carbs_g: null, fluid_ml: 900, sodium_mg: null })).toBe("0.9 L");
+    expect(formatCarry(null)).toBe("–");
+    expect(formatCarry(undefined)).toBe("–");
+    // Sodium rounds up to 0.1 g, as the rest.
+    expect(formatCarry({ ...full, sodium_mg: 2601 })).toBe("455 g · 1.65 L · 2.7 g Na");
   });
 });

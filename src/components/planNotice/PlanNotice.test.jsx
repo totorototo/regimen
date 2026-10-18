@@ -19,6 +19,14 @@ describe("PlanNotice", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Opened a.plan.json");
   });
 
+  it("says when a saved plan's refills were replaced by this course's defaults", () => {
+    useStore.setState({
+      notice: { kind: "applied", fileName: "a.plan.json", suppliesReset: true },
+    });
+    render(<PlanNotice />);
+    expect(screen.getByRole("status")).toHaveTextContent("this course's defaults are used");
+  });
+
   it("offers another course's model, and takes it on request", () => {
     const applyNoticeModel = vi.fn();
     useStore.setState({
