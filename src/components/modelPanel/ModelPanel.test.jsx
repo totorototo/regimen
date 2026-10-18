@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import useStore from "../../store/store.js";
-import { readyState } from "../../test/fixtures.js";
+import { fueledPlanFixture, readyState } from "../../test/fixtures.js";
 import ModelPanel from "./ModelPanel.jsx";
 
 const initial = useStore.getState();
@@ -32,13 +32,15 @@ describe("ModelPanel", () => {
 
   it("keeps fueling off until asked, then shows its four fields", () => {
     render(<ModelPanel />);
-    const toggle = screen.getByRole("checkbox", { name: /Plan what to eat and drink/ });
-    expect(toggle).not.toBeChecked();
+    const fueling = screen.getByRole("group", { name: "Fueling" });
+    const off = within(fueling).getByRole("button", { name: "Off" });
+    const on = within(fueling).getByRole("button", { name: "On" });
+    expect(off).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByLabelText(/Carbs/)).toBeNull();
     expect(useStore.getState().settings.fueling).toBeNull();
 
-    fireEvent.click(toggle);
-    expect(screen.getByRole("group", { name: "Fueling" })).toBeInTheDocument();
+    fireEvent.click(on);
+    expect(on).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText(/Carbs/)).toHaveValue("60");
     expect(screen.getByLabelText(/Fluid/)).toHaveValue("500");
     expect(screen.getByLabelText(/Sodium/)).toHaveValue("400");
@@ -50,8 +52,24 @@ describe("ModelPanel", () => {
     expect(carbs).toHaveAttribute("aria-invalid", "true");
     expect(carbs).toHaveAccessibleDescription(/0 to 150/);
 
-    fireEvent.click(toggle);
+    fireEvent.click(off);
     expect(screen.queryByLabelText(/Carbs/)).toBeNull();
     expect(useStore.getState().settings.fueling).toBeNull();
+  });
+
+  it("names each field's unit, and totals the race when the plan has fueling", () => {
+    useStore.setState({
+      form: { ...useStore.getState().form, fueling: true },
+      plan: fueledPlanFixture,
+    });
+    render(<ModelPanel />);
+    expect(screen.getByLabelText("Flat pace min/km")).toHaveValue("8:20");
+    expect(screen.getByLabelText("Carbs g/h")).toBeInTheDocument();
+    // 6000 s to the finish at 70 g/h, 500 ml/h and 400 mg/h, rounded up.
+    const total = (label) =>
+      within(screen.getByText("Whole race").parentElement).getByText(label).nextSibling;
+    expect(total("Carbs")).toHaveTextContent("117 g");
+    expect(total("Fluid")).toHaveTextContent("0.84 L");
+    expect(total("Sodium")).toHaveTextContent("0.7 g");
   });
 });

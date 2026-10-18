@@ -4,9 +4,9 @@ import { finishTime, fixtureBytes, fixtureSha256, openCourse, readDownload } fro
 
 test("a course opens on a plan with a row per checkpoint", async ({ page }) => {
   await openCourse(page);
-  const rows = page.getByRole("table").getByRole("row");
-  await expect(rows).toHaveCount(4);
-  await expect(rows.nth(2).getByRole("rowheader")).toContainText("Refuge");
+  const rows = page.getByRole("region", { name: "Plan" }).getByRole("listitem");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(1).getByRole("heading")).toHaveText("Refuge");
   await expect(page.getByText("Synthetic 6K")).toBeVisible();
 });
 
@@ -49,25 +49,30 @@ test("fueling: targets, a refill changed per checkpoint, and what to leave with"
   page,
 }) => {
   await openCourse(page);
-  await expect(page.getByRole("columnheader", { name: "Refill" })).toHaveCount(0);
-  await page.getByRole("checkbox", { name: /Plan what to eat and drink/ }).check();
+  await expect(page.getByRole("group", { name: /Refill/ })).toHaveCount(0);
+  await page.getByRole("group", { name: "Fueling" }).getByRole("button", { name: "On" }).click();
   await page.getByLabel(/Carbs/).fill("70");
 
   // gpxz's defaults: the Start full, the Refuge (a time barrier) nothing.
-  const start = page.getByRole("combobox", { name: "Refill at Start" });
-  const refuge = page.getByRole("combobox", { name: "Refill at Refuge" });
-  await expect(start).toHaveValue("full");
-  await expect(refuge).toHaveValue("none");
-  const rows = page.getByRole("table").getByRole("row");
-  await expect(rows.nth(1).getByRole("cell").last()).toContainText(
-    /\d+ g · [\d.]+ L · [\d.]+ g Na/,
-  );
-  await expect(rows.nth(2).getByRole("cell").last()).toHaveText("–");
+  const start = page.getByRole("group", { name: "Refill at Start" });
+  const refuge = page.getByRole("group", { name: "Refill at Refuge" });
+  const pressed = (group, name) => group.getByRole("button", { name, exact: true });
+  await expect(pressed(start, "Full")).toHaveAttribute("aria-pressed", "true");
+  await expect(pressed(refuge, "None")).toHaveAttribute("aria-pressed", "true");
+  const leaveWith = (index) =>
+    page
+      .getByRole("region", { name: "Plan" })
+      .getByRole("listitem")
+      .nth(index)
+      .getByText("Leave with")
+      .locator("xpath=following-sibling::*[1]");
+  await expect(leaveWith(0)).toHaveText(/\d+ g · [\d.]+ L · [\d.]+ g Na/);
+  await expect(leaveWith(1)).toHaveText("–");
 
-  await refuge.selectOption("water");
+  await pressed(refuge, "Water").click();
   await expect(refuge).toHaveClass(/changed/);
-  await expect(rows.nth(2).getByRole("cell").last()).toHaveText(/^[\d.]+ L$/);
-  await expect(page.locator("dt", { hasText: "Carbs" })).toBeVisible();
+  await expect(leaveWith(1)).toHaveText(/^[\d.]+ L$/);
+  await expect(page.getByText("Whole race")).toBeVisible();
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -88,7 +93,9 @@ test("fueling: targets, a refill changed per checkpoint, and what to leave with"
   await openCourse(page);
   await page.getByTestId("plan-input").setInputFiles(saved);
   await expect(page.getByLabel(/Carbs/)).toHaveValue("70");
-  await expect(page.getByRole("combobox", { name: "Refill at Refuge" })).toHaveValue("water");
+  await expect(
+    page.getByRole("group", { name: "Refill at Refuge" }).getByRole("button", { name: "Water" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 
 test("a saved plan reopens on its course, and asks on another", async ({ page }) => {
@@ -141,4 +148,31 @@ test("a GPX without checkpoints says to go through Waymark", async ({ page }) =>
     buffer: Buffer.from(bare),
   });
   await expect(page.getByRole("alert")).toContainText("pin the checkpoints");
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the verdict comes first, and the model opens on Edit", async ({ page }) => {
+    await openCourse(page);
+    const verdict = await page.getByRole("region", { name: "Verdict" }).boundingBox();
+    const summary = await page.getByRole("heading", { name: "Your model" }).boundingBox();
+    expect(verdict.y).toBeLessThan(summary.y);
+
+    const pace = page.getByLabel(/Flat pace/);
+    await expect(pace).toBeHidden();
+    await page.getByRole("button", { name: "Edit" }).click();
+    await pace.fill("7:30");
+    await page.getByRole("button", { name: "Done" }).click();
+    await expect(pace).toBeHidden();
+    await expect(page.getByText(/^7:30 \/km · fatigue/)).toBeVisible();
+
+    // The two files side by side, Export full width under them.
+    const gpx = await page.getByRole("button", { name: /Open GPX/ }).boundingBox();
+    const plan = await page.getByRole("button", { name: /Open plan/ }).boundingBox();
+    const exportButton = await page.getByRole("button", { name: /Export plan.json/ }).boundingBox();
+    expect(Math.round(plan.y)).toBe(Math.round(gpx.y));
+    expect(exportButton.y).toBeGreaterThan(gpx.y);
+    expect(exportButton.width).toBeGreaterThan(plan.x + plan.width - gpx.x - 1);
+  });
 });

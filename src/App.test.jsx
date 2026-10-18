@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import App, { droppedKind } from "./App.jsx";
@@ -29,8 +29,21 @@ describe("App", () => {
     useStore.setState(readyState);
     render(<ThemedApp />);
     expect(screen.getByLabelText(/Flat pace/)).toHaveValue("8:20");
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Plan" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Verdict" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Export plan.json/ })).toBeEnabled();
+  });
+
+  it("folds the model on a phone until Edit, and opens the cards it names", () => {
+    useStore.setState(readyState);
+    render(<ThemedApp />);
+    const edit = screen.getByRole("button", { name: "Edit" });
+    expect(edit).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById(edit.getAttribute("aria-controls"))).toContainElement(
+      screen.getByLabelText(/Flat pace/),
+    );
+    fireEvent.click(edit);
+    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("renders without the theme provider's help in tests", () => {

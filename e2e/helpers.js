@@ -16,7 +16,7 @@ export async function readDownload(download) {
 export async function openCourse(page, file = fixture) {
   await page.goto("/");
   await page.getByTestId("course-input").setInputFiles(file);
-  await page.getByRole("table").waitFor();
+  await page.getByRole("region", { name: "Plan" }).getByRole("listitem").first().waitFor();
 }
 
 export const finishTime = (page) =>

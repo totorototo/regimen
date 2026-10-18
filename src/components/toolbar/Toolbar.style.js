@@ -75,6 +75,39 @@ const style = (Component) => styled(Component)`
       flex-basis: 100%;
     }
   }
+
+  /* A phone: the two files side by side, the main action full width under them. */
+  @media (max-width: 40em) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Only the brand's row meets the fixed theme toggle: the chips take the full width. */
+    padding-right: 1rem;
+
+    .brand,
+    .file,
+    button.export,
+    .error {
+      grid-column: 1 / -1;
+    }
+
+    .brand {
+      order: -2;
+    }
+
+    .file {
+      order: -1;
+      color: var(--color-text-muted);
+    }
+
+    button.export {
+      order: 1;
+      margin-left: 0;
+    }
+
+    .error {
+      order: 2;
+    }
+  }
 `;
 
 export default style;
