@@ -53,13 +53,13 @@ zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
   doesn't parse is marked and the plan keeps the last valid model. Export computes a change
   still waiting first, so the file matches the form.
 - The first checkpoint's margin is not shown: its `<time>` is the start, not a cutoff.
-- The page is Terminus's and Retrace's story: one 46rem column of sections (`src/components/
-  story/`, the section list in `storySections`), the course's elevation rotated behind it,
-  a dot nav. Controls are Terminus's section commands (`actionButton` in controls.js): the
-  model is a column of stepper rows right under the verdict (`StoryModel`: − value +, the
-  value read only; `stepText` in settings.js steps, snaps and bounds it), and the story ends
-  on StoryEnd's column (export, files, theme, reset).
-  No sidebar, no floating panel.
+- The page is Terminus's and Retrace's story: one 46rem column of sections in
+  `src/components/story/` (the section list in `storySections`), the course's elevation
+  rotated behind it, a dot nav. Controls are Terminus's section commands (`actionButton` in
+  controls.js): the model is a column of stepper rows right under the verdict (`StoryModel`:
+  − value +, the value read only; `stepText` in settings.js steps, snaps and bounds it), and
+  the story ends on StoryEnd's column (export, files, theme, reset). No sidebar, no floating
+  panel.
 - No map, PWA or agent tools yet (Waymark has all three, to copy when they're wanted).
 - Design system (Trail Suite): tokens come from `@totorototo/trail-tokens`;
   `src/theme/Theme.js` only re-exports it. Never edit token values here. Shared control
