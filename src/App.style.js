@@ -2,12 +2,13 @@ import styled from "styled-components";
 
 import { eyebrow } from "./theme/type.js";
 
-// Waymark's page: the start (an eyebrow, a mono title, one ledger row), then the workspace,
-// here the model beside the plan.
+// Waymark's page: the start (an eyebrow, a mono title, one ledger row), then the story.
 export const Layout = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* One gutter for the masthead and the page, so the mark and the content share an edge. */
+  --gutter: clamp(1rem, 3vw, 2.5rem);
   outline: ${(props) => (props.$dragging ? "3px dashed var(--color-primary)" : "none")};
   outline-offset: -6px;
 
@@ -15,7 +16,7 @@ export const Layout = styled.div`
     display: flex;
     flex: 1;
     flex-direction: column;
-    padding: 0 1rem;
+    padding: 0 var(--gutter);
   }
 
   .start {
@@ -91,73 +92,14 @@ export const Layout = styled.div`
     margin-top: 2rem;
   }
 
-  /* The model beside the verdict and the checkpoints; on a phone, one column with the
-     verdict first (see below). */
-  .workspace {
-    display: grid;
-    grid-template-columns: 20rem minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      "model lead"
-      "model checkpoints";
-    gap: 2.5rem;
-    padding-top: 1rem;
+  /* The story runs edge to edge: its sections set their own gutters. */
+  main {
+    padding-inline: ${(props) => (props.$story ? "0" : "var(--gutter)")};
   }
 
-  .workspace > .lead {
-    grid-area: lead;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    min-width: 0;
-  }
-
-  .workspace > .model {
-    grid-area: model;
-    align-self: start;
-  }
-
-  .workspace > .checkpoints {
-    grid-area: checkpoints;
-  }
-
-  /* The folded model is for a phone only. */
-  .model .summary {
-    display: none;
-  }
-
-  /* A phone: the model, then the plan, in the page's own scroll. */
   @media (max-width: 52em) {
-    main {
-      padding: 0 0.5rem;
-    }
-
     .start {
-      padding-inline: 0.5rem;
-    }
-
-    .workspace {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: auto;
-      grid-template-areas:
-        "lead"
-        "model"
-        "checkpoints";
-      gap: 2rem;
-    }
-
-    .model {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-
-    .model .summary {
-      display: flex;
-    }
-
-    .model:not(.editing) .panel {
-      display: none;
+      padding-inline: 0;
     }
   }
 `;

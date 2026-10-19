@@ -1,35 +1,38 @@
 import { expect, test } from "@playwright/test";
 
-import { finishTime, fixtureBytes, fixtureSha256, openCourse, readDownload } from "./helpers.js";
+import {
+  exportButton,
+  finishTime,
+  fixtureBytes,
+  fixtureSha256,
+  openCourse,
+  readDownload,
+  stepTo,
+  value,
+} from "./helpers.js";
 
-test("a course opens on a plan with a row per checkpoint", async ({ page }) => {
+test("a course opens on its story, a stop per checkpoint", async ({ page }) => {
   await openCourse(page);
-  const rows = page.getByRole("region", { name: "Plan" }).getByRole("listitem");
-  await expect(rows).toHaveCount(3);
-  await expect(rows.nth(1).getByRole("heading")).toHaveText("Refuge");
-  await expect(page.getByText("Synthetic 6K")).toBeVisible();
+  const names = page.getByRole("list", { name: "Checkpoints" }).getByRole("heading");
+  await expect(names).toHaveText(["Start", "Refuge", "Finish"]);
+  await expect(page.getByRole("heading", { level: 1, name: "Synthetic 6K" })).toBeVisible();
+  // The route behind the story is the course's elevation, from gpxz.
+  await expect(page.locator(".contour-line")).toHaveAttribute("d", /^M[\d.]+,0\.0L/);
 });
 
-test("a slower pace finishes later, and an invalid one is marked", async ({ page }) => {
+test("a slower pace finishes later", async ({ page }) => {
   await openCourse(page);
   const before = await finishTime(page);
-  const pace = page.getByLabel(/Flat pace/);
-  await pace.fill("12:00");
+  await stepTo(page, "Flat pace", "9:00", 1);
+  await expect(value(page, "Flat pace")).toHaveText("9:00 min/km");
   await expect.poll(() => finishTime(page)).not.toBe(before);
-
-  await pace.fill("fast");
-  await expect(pace).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByRole("button", { name: /Export plan.json/ })).toBeDisabled();
 });
 
 test("plan.json downloads with the model and the course's hash", async ({ page }) => {
   await openCourse(page);
-  await page.getByLabel(/LifeBase stop/).fill("15");
-  await page.getByLabel(/Flat pace/).fill("7:30");
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: /Export plan.json/ }).click(),
-  ]);
+  await stepTo(page, "LifeBase stop", "15", -1);
+  await stepTo(page, "Flat pace", "7:30", -1);
+  const [download] = await Promise.all([page.waitForEvent("download"), exportButton(page).click()]);
   expect(download.suggestedFilename()).toBe("route.plan.json");
   const text = await readDownload(download);
   const plan = JSON.parse(text);
@@ -50,34 +53,31 @@ test("fueling: targets, a refill changed per checkpoint, and what to leave with"
 }) => {
   await openCourse(page);
   await expect(page.getByRole("group", { name: /Refill/ })).toHaveCount(0);
-  await page.getByRole("group", { name: "Fueling" }).getByRole("button", { name: "On" }).click();
-  await page.getByLabel(/Carbs/).fill("70");
+  await page.getByRole("button", { name: /^Fueling/ }).click();
+  await stepTo(page, "Carbs", "70", 1);
 
   // gpxz's defaults: the Start full, the Refuge (a time barrier) nothing.
   const start = page.getByRole("group", { name: "Refill at Start" });
   const refuge = page.getByRole("group", { name: "Refill at Refuge" });
-  const pressed = (group, name) => group.getByRole("button", { name, exact: true });
-  await expect(pressed(start, "Full")).toHaveAttribute("aria-pressed", "true");
-  await expect(pressed(refuge, "None")).toHaveAttribute("aria-pressed", "true");
+  const supply = (group, name) => group.getByRole("button", { name, exact: true });
+  await expect(supply(start, "Full")).toHaveAttribute("aria-pressed", "true");
+  await expect(supply(refuge, "None")).toHaveAttribute("aria-pressed", "true");
   const leaveWith = (index) =>
     page
-      .getByRole("region", { name: "Plan" })
+      .getByRole("list", { name: "Checkpoints" })
       .getByRole("listitem")
       .nth(index)
-      .getByText("Leave with")
-      .locator("xpath=following-sibling::*[1]");
-  await expect(leaveWith(0)).toHaveText(/\d+ g · [\d.]+ L · [\d.]+ g Na/);
-  await expect(leaveWith(1)).toHaveText("–");
+      .locator(".carry");
+  await expect(leaveWith(0)).toHaveText(/Leave with \d+ g · [\d.]+ L · [\d.]+ g Na/);
+  await expect(leaveWith(1)).toHaveCount(0);
 
-  await pressed(refuge, "Water").click();
-  await expect(refuge).toHaveClass(/changed/);
-  await expect(leaveWith(1)).toHaveText(/^[\d.]+ L$/);
+  await supply(refuge, "Water").click();
+  await expect(supply(refuge, "Water")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("was none")).toBeVisible();
+  await expect(leaveWith(1)).toHaveText(/^Leave with [\d.]+ L$/);
   await expect(page.getByText("Whole race")).toBeVisible();
 
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: /Export plan.json/ }).click(),
-  ]);
+  const [download] = await Promise.all([page.waitForEvent("download"), exportButton(page).click()]);
   const text = await readDownload(download);
   const plan = JSON.parse(text);
   expect(plan.model.fueling).toMatchObject({
@@ -92,7 +92,7 @@ test("fueling: targets, a refill changed per checkpoint, and what to leave with"
   saved.buffer = Buffer.from(text);
   await openCourse(page);
   await page.getByTestId("plan-input").setInputFiles(saved);
-  await expect(page.getByLabel(/Carbs/)).toHaveValue("70");
+  await expect(value(page, "Carbs")).toHaveText("70 g/h");
   await expect(
     page.getByRole("group", { name: "Refill at Refuge" }).getByRole("button", { name: "Water" }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -100,20 +100,19 @@ test("fueling: targets, a refill changed per checkpoint, and what to leave with"
 
 test("a saved plan reopens on its course, and asks on another", async ({ page }) => {
   await openCourse(page);
-  await page.getByLabel(/Fatigue/).fill("0.01");
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: /Export plan.json/ }).click(),
-  ]);
+  await stepTo(page, "Fatigue", "0.01", 1);
+  const [download] = await Promise.all([page.waitForEvent("download"), exportButton(page).click()]);
   const saved = { name: "route.plan.json", mimeType: "application/json" };
   saved.buffer = Buffer.from(await readDownload(download));
 
   // Same course, fresh page: the form takes the plan's model.
   await openCourse(page);
-  await expect(page.getByLabel(/Fatigue/)).toHaveValue("0.002");
+  await expect(value(page, "Fatigue")).toHaveText("0.002 /km");
   await page.getByTestId("plan-input").setInputFiles(saved);
-  await expect(page.getByRole("status")).toContainText("Opened route.plan.json");
-  await expect(page.getByLabel(/Fatigue/)).toHaveValue("0.01");
+  await expect(page.getByRole("status").filter({ hasText: "Opened" })).toContainText(
+    "Opened route.plan.json",
+  );
+  await expect(value(page, "Fatigue")).toHaveText("0.01 /km");
 
   // The course with one byte more: the plan is for another file.
   const edited = {
@@ -124,9 +123,9 @@ test("a saved plan reopens on its course, and asks on another", async ({ page })
   await openCourse(page, edited);
   await page.getByTestId("plan-input").setInputFiles(saved);
   await expect(page.getByRole("alert")).toContainText("was made for Synthetic 6K");
-  await expect(page.getByLabel(/Fatigue/)).toHaveValue("0.002");
+  await expect(value(page, "Fatigue")).toHaveText("0.002 /km");
   await page.getByRole("button", { name: "Use its model anyway" }).click();
-  await expect(page.getByLabel(/Fatigue/)).toHaveValue("0.01");
+  await expect(value(page, "Fatigue")).toHaveText("0.01 /km");
 });
 
 test("a file that is not a plan is explained, not applied", async ({ page }) => {
@@ -153,26 +152,31 @@ test("a GPX without checkpoints says to go through Waymark", async ({ page }) =>
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("the verdict comes first, and the model opens on Edit", async ({ page }) => {
+  test("the verdict comes first, then the model as steppers", async ({ page }) => {
     await openCourse(page);
     const verdict = await page.getByRole("region", { name: "Verdict" }).boundingBox();
-    const summary = await page.getByRole("heading", { name: "Your model" }).boundingBox();
-    expect(verdict.y).toBeLessThan(summary.y);
+    const model = await page.getByRole("heading", { name: "Your model" }).boundingBox();
+    expect(verdict.y).toBeLessThan(model.y);
 
-    const pace = page.getByLabel(/Flat pace/);
-    await expect(pace).toBeHidden();
-    await page.getByRole("button", { name: "Edit" }).click();
-    await pace.fill("7:30");
-    await page.getByRole("button", { name: "Done" }).click();
-    await expect(pace).toBeHidden();
-    await expect(page.getByText(/^7:30 \/km · fatigue/)).toBeVisible();
+    const before = await finishTime(page);
+    // Six steps of 5 s/km on the 6 km fixture: about 3 min, enough to show in the finish.
+    const plus = page.getByRole("button", { name: "Increase Flat pace" });
+    for (let i = 0; i < 6; i += 1) await plus.click();
+    await expect(value(page, "Flat pace")).toHaveText("8:50 min/km");
+    await expect.poll(() => finishTime(page)).not.toBe(before);
+    // Each step button is the suite's 44px target, beside the value.
+    const target = await page.getByRole("button", { name: "Increase Fatigue" }).boundingBox();
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.height).toBeGreaterThanOrEqual(44);
 
-    // The two files side by side, Export full width under them.
-    const gpx = await page.getByRole("button", { name: /Open GPX/ }).boundingBox();
-    const plan = await page.getByRole("button", { name: /Open plan/ }).boundingBox();
-    const exportButton = await page.getByRole("button", { name: /Export plan.json/ }).boundingBox();
-    expect(Math.round(plan.y)).toBe(Math.round(gpx.y));
-    expect(exportButton.y).toBeGreaterThan(gpx.y);
-    expect(exportButton.width).toBeGreaterThan(plan.x + plan.width - gpx.x - 1);
+    // One row of masthead: the brand and Export; the files wait in the story's last section.
+    const banner = await page.getByRole("banner").boundingBox();
+    expect(banner.height).toBeLessThan(100);
+    await expect(exportButton(page)).toBeVisible();
+    await expect(page.getByRole("banner").getByRole("button", { name: /Open GPX/ })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Open another GPX" })).toBeAttached();
+    // The finish time is in the top half of the first screen.
+    const finish = await page.locator(".stat.hero").boundingBox();
+    expect(finish.y).toBeLessThan(844 / 2);
   });
 });

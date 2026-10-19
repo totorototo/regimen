@@ -17,6 +17,17 @@ export function marginTier(margin_s) {
 // is always zero and says nothing.
 export const cutoffMargin = (entry, index) => (index === 0 ? null : entry.margin_s);
 
+// The margin chart's axis: the largest margin on either side of the cutoff.
+// why linear, not log: a low point must mean little time to spare; a compressed scale would
+// make 0h20 and 3h look alike.
+export function marginScale(entries) {
+  const margins = entries.map(cutoffMargin).filter((margin_s) => Number.isFinite(margin_s));
+  return {
+    over_s: Math.max(0, ...margins.map((margin_s) => -margin_s)),
+    spare_s: Math.max(0, ...margins.map((margin_s) => margin_s)),
+  };
+}
+
 // How the plan stands against its cutoffs, in one line: the worst news first.
 // { tier, text } with tier null when the course has no cutoffs.
 export function verdict(entries) {
@@ -66,16 +77,35 @@ export function fuelingTotals(plan) {
   };
 }
 
-// gpxz's checkpoint types as the runner reads them.
+// gpxz's checkpoint types as the runner reads them, under the name in the table.
 const TYPE_NAMES = { TimeBarrier: "Time barrier", Arrival: "Finish" };
 
-// "Time barrier · 21.9 km · D+ 2150 m": what a row says under the checkpoint's name.
-export function checkpointMeta(entry) {
-  const parts = [];
-  if (entry.type_name) parts.push(TYPE_NAMES[entry.type_name] ?? entry.type_name);
-  parts.push(`${(entry.distance_m / 1000).toFixed(1)} km`);
-  if (entry.elevation_gain_m > 0) {
-    parts.push(`D+ ${Math.round(entry.elevation_gain_m)} m`);
-  }
-  return parts.join(" · ");
+export const checkpointType = (entry) =>
+  entry.type_name ? (TYPE_NAMES[entry.type_name] ?? entry.type_name) : null;
+
+// Trail Suite's effort steps for a leg's climbing, in metres of D+ per km: 1 (easiest) to 5.
+// why D+ per km: it is what the runner reads off a profile, and the plan has it per leg.
+const EFFORT_GAIN_M_PER_KM = [20, 40, 60, 80];
+
+export function effortStep(gain_m_per_km) {
+  const step = EFFORT_GAIN_M_PER_KM.findIndex((limit) => gain_m_per_km < limit);
+  return step === -1 ? 5 : step + 1;
+}
+
+// The stretch run before each checkpoint: its length, its climbing, the time on the move
+// (from leaving the last checkpoint to arriving here) and how hard it climbs. Null for the
+// first checkpoint, which nothing comes before.
+export function legs(entries) {
+  return entries.map((entry, index) => {
+    if (index === 0) return null;
+    const before = entries[index - 1];
+    const distance_m = entry.distance_m - before.distance_m;
+    const gain_m = entry.elevation_gain_m - before.elevation_gain_m;
+    return {
+      distance_m,
+      gain_m,
+      duration_s: entry.duration_s_arrival - before.duration_s_departure,
+      effort: effortStep(distance_m > 0 ? gain_m / (distance_m / 1000) : 0),
+    };
+  });
 }

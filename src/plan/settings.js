@@ -116,3 +116,42 @@ export function planFileName(gpxName) {
   const base = (gpxName ?? "course.gpx").replace(/\.gpx$/i, "");
   return `${base}.plan.json`;
 }
+
+// One step of each model field, in the form's own units (seconds of pace, minutes of stop),
+// and the bounds it stays in: the form's text read as a number, stepped, written back.
+const STEPS = {
+  pace: {
+    step: 5,
+    ...BOUNDS.pace_base_s_per_km,
+    read: (text) => parsePace(text) ?? NaN,
+    write: formatPace,
+  },
+  fatigue: {
+    step: 0.0005,
+    ...BOUNDS.fatigue_coefficient,
+    read: number,
+    write: (v) => String(+v.toFixed(4)),
+  },
+  lifeBaseStopMin: { step: 5, min: 0, max: 24 * 60, read: number, write: String },
+  carbs: { step: 5, ...BOUNDS.carbs_g_per_h, read: number, write: String },
+  fluid: { step: 50, ...BOUNDS.fluid_ml_per_h, read: number, write: String },
+  sodium: { step: 50, ...BOUNDS.sodium_mg_per_h, read: number, write: String },
+  reserveMin: { step: 5, min: 0, max: 180, read: number, write: String },
+};
+
+// The field's text one step up (+1) or down (-1), snapped to the step and kept in bounds;
+// null when it can't move: a value that doesn't parse (the runner fixes it by typing), or
+// one already at its bound.
+// why snapped: from 8:22, + goes to 8:25, not 8:27, so the values stay round.
+export function stepText(name, text, direction) {
+  const { step, min, max, read, write } = STEPS[name];
+  const value = read(text);
+  if (!Number.isFinite(value)) return null;
+  const snapped =
+    direction > 0
+      ? Math.floor(value / step + 1e-9) * step + step
+      : Math.ceil(value / step - 1e-9) * step - step;
+  const next = Math.min(max, Math.max(min, snapped));
+  if (Math.abs(next - value) < 1e-9) return null;
+  return write(next);
+}

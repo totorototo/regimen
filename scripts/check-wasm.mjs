@@ -44,6 +44,10 @@ assert.equal(plan.entries.length >= 2, true);
 assert.equal(plan.model.pace_base_s_per_km, 500, "an empty settings object is gpxz's defaults");
 assert(loaded.text.endsWith("}\n"), "the text is plan.json as gpxz writes it");
 assert.deepEqual(JSON.parse(loaded.text), plan);
+assert.equal(loaded.profile.length, 400, "the profile is 400 samples");
+assert.equal(loaded.profile[0].distance_m, 0);
+assert(Math.abs(loaded.profile.at(-1).distance_m - plan.course.distance_m) < 1, "to the finish");
+assert(loaded.profile.every((point) => Number.isFinite(point.elevation_m)));
 const finish = (p) => p.entries[p.entries.length - 1].duration_s_arrival;
 console.log(
   `loaded ${plan.course.name}: ${plan.entries.length} checkpoints, ` +

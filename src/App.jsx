@@ -3,14 +3,10 @@ import { useState } from "react";
 import { Layout } from "./App.style.js";
 import Footer from "./components/footer/Footer.jsx";
 import LoadingSpinner from "./components/loadingSpinner/LoadingSpinner.jsx";
-import ModelPanel from "./components/modelPanel/ModelPanel.jsx";
-import ModelSummary from "./components/modelSummary/ModelSummary.jsx";
 import OpenCourse from "./components/openFile/OpenCourse.jsx";
-import PlanNotice from "./components/planNotice/PlanNotice.jsx";
-import PlanTable from "./components/planTable/PlanTable.jsx";
+import Story from "./components/story/Story.jsx";
 import ThemeToggle from "./components/themeToggle/ThemeToggle.jsx";
 import Toolbar from "./components/toolbar/Toolbar.jsx";
-import Verdict from "./components/verdict/Verdict.jsx";
 import { gpxHint } from "./plan/hints.js";
 import useStore from "./store/store.js";
 
@@ -25,8 +21,6 @@ export function droppedKind(file) {
 
 export default function App() {
   const [dragging, setDragging] = useState(false);
-  // A phone shows the model folded into two lines until Edit; wider screens always show it.
-  const [editing, setEditing] = useState(false);
   const status = useStore((state) => state.status);
   const error = useStore((state) => state.error);
   const openCourse = useStore((state) => state.openCourse);
@@ -45,6 +39,7 @@ export default function App() {
   return (
     <Layout
       $dragging={dragging}
+      $story={status === "ready"}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -83,24 +78,7 @@ export default function App() {
             <p className="note detail">gpxz said: {error}</p>
           </div>
         )}
-        {status === "ready" && (
-          <div className="workspace">
-            <div className="lead">
-              <PlanNotice />
-              <Verdict />
-            </div>
-            <aside className={editing ? "model editing" : "model"}>
-              <ModelSummary
-                className="summary"
-                editing={editing}
-                onToggle={() => setEditing(!editing)}
-                controls="model-panel"
-              />
-              <ModelPanel className="panel" id="model-panel" />
-            </aside>
-            <PlanTable className="checkpoints" />
-          </div>
-        )}
+        {status === "ready" && <Story />}
       </main>
       <Footer />
     </Layout>

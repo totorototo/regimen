@@ -5,7 +5,7 @@
 // { id, error }. The course arrives once, transferred (loadCourse), and stays here: a change
 // to the model only sends the model.
 
-import { __zigar, buildPlan, openPlan } from "../../zig/regimen.zig";
+import { __zigar, buildPlan, courseProfile, openPlan } from "../../zig/regimen.zig";
 
 let ready = null;
 
@@ -31,13 +31,25 @@ const planResult = (slice) => {
   return { text, plan: JSON.parse(text) };
 };
 
+// gpxz's flat [distance_m, elevation_m, ...] as points, for the line behind the page.
+// why `.typedArray`: a zero-copy view of the slice's memory, as Terminus reads points_flat.
+function profilePoints(slice) {
+  const flat = slice.typedArray ?? slice;
+  const points = [];
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    points.push({ distance_m: flat[i], elevation_m: flat[i + 1] });
+  }
+  return points;
+}
+
 export const handlers = {
   async loadCourse({ gpx, settings }) {
     const bytes = new Uint8Array(gpx);
     // Build before keeping: a file gpxz refuses must not replace the course already open.
     const result = planResult(await buildPlan(bytes, settings));
+    const profile = profilePoints(await courseProfile(bytes));
     course.bytes = bytes;
-    return result;
+    return { ...result, profile };
   },
   async buildPlan({ settings }) {
     return planResult(await buildPlan(loadedCourse(), settings));

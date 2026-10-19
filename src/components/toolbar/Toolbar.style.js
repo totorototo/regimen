@@ -9,8 +9,12 @@ const style = (Component) => styled(Component)`
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+  width: 100%;
+  max-width: calc(90rem + 2 * var(--gutter));
+  margin: 0 auto;
   /* Clear of the theme toggle fixed in the top-right corner. */
-  padding: 1rem calc(1.25rem + 44px + 1rem) 1rem 1rem;
+  padding: 1rem calc(1.25rem + 44px + 1rem) 1rem var(--gutter);
+  border-bottom: 1px solid var(--color-hairline);
 
   button {
     ${chip}
@@ -47,16 +51,34 @@ const style = (Component) => styled(Component)`
     color: var(--color-text-muted);
   }
 
+  /* The open course, named once, beside the two files it can be swapped for. */
   .file {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    max-width: 18rem;
+    margin-left: 0.5rem;
+    padding-left: 1.25rem;
+    border-left: 1px solid var(--color-hairline);
+    font-family: var(--font-family-mono);
+  }
+
+  .file-label {
+    font-size: var(--font-size-tiny);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .file-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: var(--font-family-mono);
-    font-size: var(--font-size-tiny);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-bold);
   }
 
-  .error {
+  .export-error {
     flex-basis: 100%;
     font-size: var(--font-size-tiny);
     color: var(--color-behind-text);
@@ -64,48 +86,46 @@ const style = (Component) => styled(Component)`
 
   @media (max-width: 52em) {
     gap: 0.5rem;
-    padding-right: calc(1rem + 44px + 0.5rem);
+    padding-right: calc(var(--gutter) + 44px + 0.5rem);
 
     .brand {
       flex-basis: 100%;
-    }
-
-    .file {
-      order: 1;
-      flex-basis: 100%;
-    }
-  }
-
-  /* A phone: the two files side by side, the main action full width under them. */
-  @media (max-width: 40em) {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    /* Only the brand's row meets the fixed theme toggle: the chips take the full width. */
-    padding-right: 1rem;
-
-    .brand,
-    .file,
-    button.export,
-    .error {
-      grid-column: 1 / -1;
-    }
-
-    .brand {
-      order: -2;
     }
 
     .file {
       order: -1;
-      color: var(--color-text-muted);
+      flex-basis: 100%;
+      max-width: none;
+      margin-left: 0;
+      padding-left: 0;
+      border-left: 0;
+    }
+  }
+
+  /* A phone: one row, the brand and Export. The course's name is the story's title right
+     under it, and Open GPX / Open plan wait in the story's last section.
+     why: three rows of masthead pushed the finish time past the middle of the first screen. */
+  @media (max-width: 40em) {
+    min-height: 76px;
+
+    .brand {
+      flex-basis: auto;
+      margin-right: 0;
+    }
+
+    .file,
+    button:not(.export) {
+      display: none;
     }
 
     button.export {
-      order: 1;
-      margin-left: 0;
+      margin-left: auto;
+      padding-inline: 0.875rem;
     }
 
-    .error {
-      order: 2;
+    /* "Export" alone fits beside the brand and the theme toggle. */
+    .export-file {
+      display: none;
     }
   }
 `;

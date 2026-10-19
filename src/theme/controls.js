@@ -49,6 +49,55 @@ export const chipPrimary = css`
   }
 `;
 
+// Terminus's section command (StoryEnd's .action-btn): a full-width outlined row, icon and
+// words left, stacked in a column of commands. `.active` for a command that is on, `.danger`
+// for one that destroys.
+export const actionButton = css`
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--border-radius-base);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-bold);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-base);
+
+  &:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    color: var(--color-primary-text);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.active {
+    border-color: color-mix(in srgb, var(--color-primary) 60%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary-text);
+  }
+
+  &.danger:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+    color: var(--color-accent-text);
+  }
+
+  svg {
+    flex: none;
+  }
+`;
+
 // A quiet action inside text (Dismiss, Use its model): underlined, but still a 44px target.
 export const textButton = css`
   display: inline-flex;
@@ -61,62 +110,6 @@ export const textButton = css`
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
-`;
-
-// Inputs: lighter than the cards, 44px tall. Terminus's corner.
-export const field = css`
-  min-height: 44px;
-  padding: 0.375rem 0.625rem;
-  background: var(--color-field);
-  border: 1px solid var(--color-field-border);
-  border-radius: var(--border-radius-sm);
-  color: var(--color-text);
-  font-family: var(--font-family-sansSerif);
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-medium);
-  line-height: inherit;
-  letter-spacing: normal;
-  text-transform: none;
-
-  &[aria-invalid="true"] {
-    border-color: var(--color-behind-text);
-  }
-`;
-
-// Trail Suite's segmented switch: two or three options in one outline, the picked one tinted
-// and marked with aria-pressed. Raised to the 44px target.
-export const segmented = css`
-  display: inline-flex;
-  border: 1px solid var(--color-control-border);
-  border-radius: var(--border-radius-base);
-  overflow: hidden;
-
-  button {
-    min-width: 4rem;
-    min-height: 44px;
-    padding: 0.25rem 0.875rem;
-    background: none;
-    border: 0;
-    color: var(--color-text-faint);
-    font-family: var(--font-family-mono);
-    font-size: var(--font-size-tiny);
-    font-weight: var(--font-weight-bold);
-    cursor: pointer;
-    transition: color var(--transition-base);
-  }
-
-  button:hover {
-    color: var(--color-primary-text);
-  }
-
-  button[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--color-text) 10%, transparent);
-    color: var(--color-text);
-  }
-
-  button:focus-visible {
-    outline-offset: -2px;
-  }
 `;
 
 // Trail Suite's status badge: a mono pill naming the margin to a cutoff. Outlined, no fill:
