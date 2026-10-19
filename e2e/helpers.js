@@ -16,8 +16,29 @@ export async function readDownload(download) {
 export async function openCourse(page, file = fixture) {
   await page.goto("/");
   await page.getByTestId("course-input").setInputFiles(file);
-  await page.getByRole("region", { name: "Plan" }).getByRole("listitem").first().waitFor();
+  await page.getByRole("list", { name: "Checkpoints" }).getByRole("listitem").first().waitFor();
 }
+
+// One input of the model, its stepper's value as text: "8:20 min/km".
+export const value = (page, label) =>
+  page.getByRole("group", { name: label, exact: true }).locator("output");
+
+// Steps a stepper to `target` (its value without the unit), one tap at a time.
+export async function stepTo(page, label, target, direction) {
+  const button = page.getByRole("button", {
+    name: `${direction > 0 ? "Increase" : "Decrease"} ${label}`,
+  });
+  for (let taps = 0; taps < 40; taps += 1) {
+    const text = await value(page, label).textContent();
+    if (text.split(" ")[0] === target) return;
+    await button.click();
+  }
+  throw new Error(`${label} never reached ${target}`);
+}
+
+// The masthead's Export (the story ends with the same button).
+export const exportButton = (page) =>
+  page.getByRole("banner").getByRole("button", { name: /Export plan.json/ });
 
 export const finishTime = (page) =>
   page.locator("dt", { hasText: "Finish" }).locator("xpath=following-sibling::dd").textContent();

@@ -8,6 +8,7 @@ vi.mock("../../zig/regimen.zig", () => {
     __zigar: { init: vi.fn(async () => {}) },
     buildPlan: vi.fn(async () => slice('{\n  "schema_version": 1\n}\n')),
     openPlan: vi.fn(async () => slice('{"course_matches":true}')),
+    courseProfile: vi.fn(async () => ({ typedArray: new Float64Array([0, 1400, 3000, 1650]) })),
   };
 });
 
@@ -35,6 +36,10 @@ describe("handleMessage", () => {
     expect(id).toBe(7);
     expect(result.text).toBe('{\n  "schema_version": 1\n}\n');
     expect(result.plan).toEqual({ schema_version: 1 });
+    expect(result.profile).toEqual([
+      { distance_m: 0, elevation_m: 1400 },
+      { distance_m: 3000, elevation_m: 1650 },
+    ]);
     const [course, passed] = zig.buildPlan.mock.calls[0];
     expect([...course]).toEqual([1, 2, 3]);
     expect(passed).toBe(settings);

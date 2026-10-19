@@ -94,6 +94,8 @@ export const createStore = (getClient = createWorkerClient) => {
       // The refill the runner chose per checkpoint, or [] for the course's defaults. Kept
       // while fueling is off, so turning it back on doesn't lose the choices.
       supplies: [],
+      // The course's elevation, [{ distance_m, elevation_m }], drawn behind the story.
+      profile: [],
       // plan.json as gpxz wrote it, and parsed for the table.
       planText: null,
       plan: null,
@@ -123,9 +125,16 @@ export const createStore = (getClient = createWorkerClient) => {
         });
         try {
           const buffer = await file.arrayBuffer();
-          const { text, plan } = await worker().loadCourse(buffer, get().settings);
+          const { text, plan, profile } = await worker().loadCourse(buffer, get().settings);
           if (mine !== generation) return;
-          set({ status: "ready", planText: text, plan, planError: null, planStatus: "ready" });
+          set({
+            status: "ready",
+            profile,
+            planText: text,
+            plan,
+            planError: null,
+            planStatus: "ready",
+          });
         } catch (err) {
           if (mine !== generation) return;
           set({ status: "error", error: err.message, plan: null, planText: null });

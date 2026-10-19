@@ -78,6 +78,11 @@ export const readyState = {
   status: "ready",
   error: null,
   fileName: "synthetic.gpx",
+  profile: [
+    { distance_m: 0, elevation_m: 1400 },
+    { distance_m: 3000, elevation_m: 1650 },
+    { distance_m: 6000, elevation_m: 1410 },
+  ],
   settings: DEFAULT_SETTINGS,
   form: formFromSettings(DEFAULT_SETTINGS),
   formErrors: {},

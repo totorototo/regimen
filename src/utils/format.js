@@ -43,6 +43,11 @@ export function formatMargin(seconds) {
   return `${sign}${hours}h${String(minutes % 60).padStart(2, "0")}`;
 }
 
+// Time from the start as a column of arrivals writes it, always hours and minutes so the
+// column lines up: 0 → "0h00", 4860 → "1h21".
+export const formatElapsed = (seconds) =>
+  Number.isFinite(seconds) && seconds >= 0 ? formatMargin(seconds) : "–";
+
 // Millilitres as litres, rounded up to 10 ml: 1650 → "1.65 L", 900 → "0.9 L".
 // why up: gpxz rounds carry up so the runner is never short; the label must not undo it.
 export function formatLitres(ml) {

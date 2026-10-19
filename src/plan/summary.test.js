@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { entry, fueledPlanFixture, planFixture } from "../test/fixtures.js";
-import { checkpointMeta, fuelingTotals, marginTier, verdict } from "./summary.js";
+import {
+  checkpointType,
+  effortStep,
+  fuelingTotals,
+  legs,
+  marginScale,
+  marginTier,
+  verdict,
+} from "./summary.js";
 
 const cutoffs = (...margins) => [
   entry({ name: "Start", margin_s: 0 }),
@@ -64,15 +72,33 @@ describe("fuelingTotals", () => {
   });
 });
 
-describe("checkpointMeta", () => {
-  it("writes the type as the runner reads it, the distance and the gain so far", () => {
-    const barrier = entry({
-      type_name: "TimeBarrier",
-      distance_m: 21900,
-      elevation_gain_m: 2150.4,
-    });
-    expect(checkpointMeta(barrier)).toBe("Time barrier · 21.9 km · D+ 2150 m");
-    expect(checkpointMeta(entry())).toBe("Start · 0.0 km");
-    expect(checkpointMeta(entry({ type_name: null, distance_m: 1500 }))).toBe("1.5 km");
+describe("checkpointType", () => {
+  it("writes the type as the runner reads it", () => {
+    expect(checkpointType(entry({ type_name: "TimeBarrier" }))).toBe("Time barrier");
+    expect(checkpointType(entry({ type_name: "Arrival" }))).toBe("Finish");
+    expect(checkpointType(entry())).toBe("Start");
+    expect(checkpointType(entry({ type_name: null }))).toBeNull();
+  });
+});
+
+describe("marginScale", () => {
+  it("takes the largest margin on either side of the cutoff, skipping the start", () => {
+    // The start's own zero margin is not a cutoff, and a checkpoint without one is skipped.
+    expect(marginScale(cutoffs(5400, -1800, null, 1800))).toEqual({ over_s: 1800, spare_s: 5400 });
+    expect(marginScale(cutoffs(3600, 0))).toEqual({ over_s: 0, spare_s: 3600 });
+  });
+});
+
+describe("legs", () => {
+  it("measures the stretch before each checkpoint, on the move", () => {
+    const [start, refuge, finish] = legs(planFixture.entries);
+    expect(start).toBeNull();
+    expect(refuge).toEqual({ distance_m: 3000, gain_m: 250, duration_s: 3600, effort: 5 });
+    // Left the Refuge after its 10 min stop: 1800 s on the move, 10 m up in 3 km.
+    expect(finish).toEqual({ distance_m: 3000, gain_m: 10, duration_s: 1800, effort: 1 });
+  });
+
+  it("steps effort by D+ per km, as the suite's terrain scale", () => {
+    expect([0, 19.9, 20, 45, 65, 80, 200].map(effortStep)).toEqual([1, 1, 2, 3, 4, 5, 5]);
   });
 });

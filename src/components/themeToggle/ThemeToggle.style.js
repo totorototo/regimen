@@ -4,7 +4,9 @@ import styled from "styled-components";
 // tinted fill (not glass) stays legible over a flat page, and the ring's 0.4 alpha keeps
 // about 3:1 non-text contrast against the background (WCAG 1.4.11).
 const style = (Component) => styled(Component)`
-  position: fixed;
+  /* why not fixed, as in Terminus: here the plan's table runs to the right edge, and a fixed
+     button would sit over its last column. It scrolls away with the masthead. */
+  position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 1.25rem);
   right: calc(env(safe-area-inset-right, 0px) + 1.25rem);
   z-index: var(--z-index-overlay);
@@ -19,13 +21,6 @@ const style = (Component) => styled(Component)`
   color: var(--color-text);
   cursor: pointer;
   transition: all var(--transition-base);
-
-  /* On a phone the page scrolls past the map: the toggle scrolls away with the toolbar
-     instead of sitting on the map's controls. */
-  @media (max-width: 52em) {
-    position: absolute;
-    right: calc(env(safe-area-inset-right, 0px) + 1rem);
-  }
 
   &:hover {
     background: color-mix(in srgb, var(--color-text) 18%, transparent);

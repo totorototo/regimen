@@ -11,7 +11,8 @@ zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
   `plan.json` (strategy for that course), defined, computed, written and read by gpxz
   (`src/plan.zig` there). Several plans per course are fine.
 - No JavaScript reads GPX or builds a plan. The page hands bytes to the worker and gets back
-  plan.json's text, which it downloads as is and parses only to draw the table.
+  plan.json's text, which it downloads as is and parses only to draw the story, and the
+  course's elevation profile (`courseProfile`, 400 samples), drawn behind it.
 - A plan names its course by the SHA-256 of the GPX's bytes. Opening a plan for another file
   (or this one edited) is shown, never silently applied: the person chooses.
 - Regimen edits the model only (`pace_base_s_per_km`, `fatigue_coefficient`,
@@ -29,9 +30,9 @@ zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
 ## Zig side (`zig/`)
 
 - Don't vendor library code. gpxz is a dependency pinned in `build.zig.zon`.
-- `regimen.zig` is a thin boundary: bytes in, plan.json's bytes or JSON out. Exports are
-  camelCase (`buildPlan`, `openPlan`); internal functions are snake_case and take a scratch
-  and an output allocator. TIGER_STYLE as in gpxz: assertions, functions of at most 70 lines,
+- `regimen.zig` is a thin boundary: bytes in, plan.json's bytes or JSON out (or the flat
+  `[]f64` profile). Exports are camelCase (`buildPlan`, `openPlan`, `courseProfile`);
+  internal functions are snake_case and take a scratch and an output allocator. TIGER_STYLE as in gpxz: assertions, functions of at most 70 lines,
   100 columns, tests for everything, `zig fmt`.
 - The WASM build is ReleaseSmall, where a failed assert is undefined behaviour: anything that
   comes from the page (settings, files) is checked with errors. The settings bounds live in
@@ -52,6 +53,13 @@ zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
   doesn't parse is marked and the plan keeps the last valid model. Export computes a change
   still waiting first, so the file matches the form.
 - The first checkpoint's margin is not shown: its `<time>` is the start, not a cutoff.
+- The page is Terminus's and Retrace's story: one 46rem column of sections (`src/components/
+  story/`, the section list in `storySections`), the course's elevation rotated behind it,
+  a dot nav. Controls are Terminus's section commands (`actionButton` in controls.js): the
+  model is a column of stepper rows right under the verdict (`StoryModel`: − value +, the
+  value read only; `stepText` in settings.js steps, snaps and bounds it), and the story ends
+  on StoryEnd's column (export, files, theme, reset).
+  No sidebar, no floating panel.
 - No map, PWA or agent tools yet (Waymark has all three, to copy when they're wanted).
 - Design system (Trail Suite): tokens come from `@totorototo/trail-tokens`;
   `src/theme/Theme.js` only re-exports it. Never edit token values here. Shared control

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatCarry,
   formatDuration,
+  formatElapsed,
   formatKm,
   formatLitres,
   formatMargin,
@@ -11,6 +12,12 @@ import {
 } from "./format.js";
 
 describe("format", () => {
+  it("writes arrivals as hours and minutes, so the column lines up", () => {
+    expect(formatElapsed(0)).toBe("0h00");
+    expect(formatElapsed(4860)).toBe("1h21");
+    expect(formatElapsed(NaN)).toBe("–");
+  });
+
   it("writes distances in km", () => {
     expect(formatKm(42195)).toBe("42.2 km");
     expect(formatKm(0)).toBe("0.0 km");

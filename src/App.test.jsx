@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import App, { droppedKind } from "./App.jsx";
@@ -25,25 +25,28 @@ describe("App", () => {
     expect(screen.getByText("gpxz said: Checkpoints too few")).toBeInTheDocument();
   });
 
-  it("shows the model beside the plan once a course is open", () => {
+  it("tells the plan as a story once a course is open", () => {
     useStore.setState(readyState);
     render(<ThemedApp />);
-    expect(screen.getByLabelText(/Flat pace/)).toHaveValue("8:20");
-    expect(screen.getByRole("region", { name: "Plan" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Synthetic 6K");
     expect(screen.getByRole("region", { name: "Verdict" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Export plan.json/ })).toBeEnabled();
+    expect(screen.getByRole("list", { name: "Checkpoints" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Take it to the start line" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Story sections" })).toBeInTheDocument();
+    // In the masthead and at the end of the story.
+    for (const button of screen.getAllByRole("button", { name: /Export plan.json/ })) {
+      expect(button).toBeEnabled();
+    }
   });
 
-  it("folds the model on a phone until Edit, and opens the cards it names", () => {
+  it("puts the model right under the verdict, as steppers", () => {
     useStore.setState(readyState);
     render(<ThemedApp />);
-    const edit = screen.getByRole("button", { name: "Edit" });
-    expect(edit).toHaveAttribute("aria-expanded", "false");
-    expect(document.getElementById(edit.getAttribute("aria-controls"))).toContainElement(
-      screen.getByLabelText(/Flat pace/),
-    );
-    fireEvent.click(edit);
-    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("aria-expanded", "true");
+    const verdict = screen.getByRole("region", { name: "Verdict" });
+    const model = screen.getByRole("heading", { name: "Your model" });
+    expect(verdict.compareDocumentPosition(model) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Increase Flat pace" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary")).toBeNull();
   });
 
   it("renders without the theme provider's help in tests", () => {

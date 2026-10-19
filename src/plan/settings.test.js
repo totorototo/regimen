@@ -7,6 +7,7 @@ import {
   formFromSettings,
   planFileName,
   settingsFromForm,
+  stepText,
   supplyDefault,
 } from "./settings.js";
 
@@ -102,5 +103,33 @@ describe("planFileName", () => {
     expect(planFileName("grp-80.gpx")).toBe("grp-80.plan.json");
     expect(planFileName("Race.GPX")).toBe("Race.plan.json");
     expect(planFileName(null)).toBe("course.plan.json");
+  });
+});
+
+describe("stepText", () => {
+  it("steps each field by its own step, in the form's units", () => {
+    expect(stepText("pace", "8:20", 1)).toBe("8:25");
+    expect(stepText("pace", "8:20", -1)).toBe("8:15");
+    expect(stepText("fatigue", "0.002", 1)).toBe("0.0025");
+    expect(stepText("lifeBaseStopMin", "60", -1)).toBe("55");
+    expect(stepText("fluid", "500", 1)).toBe("550");
+  });
+
+  it("snaps an off-step value to the next round one", () => {
+    expect(stepText("pace", "8:22", 1)).toBe("8:25");
+    expect(stepText("pace", "8:22", -1)).toBe("8:20");
+    expect(stepText("carbs", "62", 1)).toBe("65");
+  });
+
+  it("stops at the bounds gpxz enforces", () => {
+    expect(stepText("pace", "2:00", -1)).toBeNull();
+    expect(stepText("fatigue", "0", -1)).toBeNull();
+    expect(stepText("carbs", "150", 1)).toBeNull();
+    expect(stepText("carbs", "148", 1)).toBe("150");
+  });
+
+  it("leaves a value that does not parse to the runner's typing", () => {
+    expect(stepText("pace", "quick", 1)).toBeNull();
+    expect(stepText("carbs", "", 1)).toBeNull();
   });
 });

@@ -5,6 +5,8 @@
 //! - `buildPlan`: the plan for a course and a model, as the exact bytes of `plan.json`.
 //! - `openPlan`: a saved `plan.json` read and validated, with whether it was made for the
 //!   course that is open.
+//! - `courseProfile`: the course's elevation at evenly spaced distances, for the line drawn
+//!   behind the page.
 //!
 //! JSON rather than Zig structs crosses the boundary on purpose: a plan is a tree of optional
 //! fields and slices, which Zigar would expose as proxies over WASM memory that the caller
@@ -83,7 +85,45 @@ pub fn openPlan(
     return plan_open(scratch_allocator, allocator, plan_bytes, gpx_bytes);
 }
 
+/// The course's elevation sampled at `profile_samples` evenly spaced distances, start to
+/// finish, as [distance_m, elevation_m, distance_m, elevation_m, ...].
+/// why a flat []f64: Zigar hands it over as one Float64Array, not a proxy per point.
+pub fn courseProfile(allocator: std.mem.Allocator, gpx_bytes: []const u8) ![]f64 {
+    return profile_build(scratch_allocator, allocator, gpx_bytes);
+}
+
 // Implementation (snake_case, testable with any pair of allocators)
+
+/// Enough to draw a 1000-unit tall line without visible steps; a fixed count keeps the
+/// transfer small whatever the file's resolution.
+pub const profile_samples = 400;
+
+fn profile_build(
+    scratch: std.mem.Allocator,
+    output: std.mem.Allocator,
+    gpx_bytes: []const u8,
+) ![]f64 {
+    if (gpx_bytes.len > gpx_bytes_max) return error.FileTooLarge;
+    // The profile is the course's, not the model's: gpxz's default pace is enough to parse.
+    const settings: gpxz.Settings = .{};
+    var data = try gpxz.parse(scratch, gpx_bytes, &settings);
+    defer data.deinit(scratch);
+    const trace = &data.trace;
+    if (trace.points.len < 2) return error.CheckpointsTooFew;
+    assert(trace.distances_m_cumulative.len == trace.points.len);
+
+    const profile = try output.alloc(f64, profile_samples * 2);
+    errdefer output.free(profile);
+    const step_m = trace.distance_m / @as(f64, profile_samples - 1);
+    for (0..profile_samples) |sample| {
+        const distance_m = step_m * @as(f64, @floatFromInt(sample));
+        const index = trace.index_at_distance(distance_m);
+        profile[sample * 2] = distance_m;
+        profile[sample * 2 + 1] = trace.points[index][2];
+    }
+    assert(profile[0] == 0);
+    return profile;
+}
 
 fn settings_check(settings: *const PlanSettings) error{SettingsInvalid}!gpxz.Settings {
     const pace = settings.pace_base_s_per_km;
@@ -491,4 +531,40 @@ test "openPlan: gpxz's read errors reach the page" {
     try testing.expect(!std.mem.eql(u8, broken, json));
     const result = plan_open(allocator, allocator, broken, fixture_gpx);
     try testing.expectError(error.PlanInvalid, result);
+}
+
+test "courseProfile: evenly spaced, start to finish, on the course's elevations" {
+    const profile = try profile_build(testing.allocator, testing.allocator, fixture_gpx);
+    defer testing.allocator.free(profile);
+    try testing.expectEqual(@as(usize, profile_samples * 2), profile.len);
+
+    var data = try gpxz.parse(testing.allocator, fixture_gpx, &.{});
+    defer data.deinit(testing.allocator);
+    var elevation_min_m: f64 = std.math.inf(f64);
+    var elevation_max_m: f64 = -std.math.inf(f64);
+    for (data.trace.points) |point| {
+        elevation_min_m = @min(elevation_min_m, point[2]);
+        elevation_max_m = @max(elevation_max_m, point[2]);
+    }
+
+    const last = profile_samples - 1;
+    try testing.expectApproxEqAbs(data.trace.distance_m, profile[last * 2], 1e-6);
+    const step_m = profile[2];
+    try testing.expect(step_m > 0);
+    for (0..profile_samples) |sample| {
+        const expected_m = step_m * @as(f64, @floatFromInt(sample));
+        try testing.expectApproxEqAbs(expected_m, profile[sample * 2], 1e-6);
+        const elevation_m = profile[sample * 2 + 1];
+        try testing.expect(elevation_m >= elevation_min_m and elevation_m <= elevation_max_m);
+    }
+    // The fixture climbs to the Refuge: the profile is not flat.
+    try testing.expect(elevation_max_m > elevation_min_m);
+}
+
+test "courseProfile: a file that is not a GPX is refused" {
+    const result = profile_build(testing.allocator, testing.allocator, "not a gpx");
+    if (result) |profile| {
+        testing.allocator.free(profile);
+        return error.TestUnexpectedResult;
+    } else |_| {}
 }
