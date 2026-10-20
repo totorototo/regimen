@@ -27,3 +27,7 @@ npm run test:all
 npm run build && npm run check:wasm
 npm run e2e
 ```
+
+## License
+
+MIT, see `LICENSE`.
