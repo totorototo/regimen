@@ -2,6 +2,7 @@
   "name": "regimen",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Plan a trail race on a waymark course: set the pace model, see each checkpoint's arrival and cutoff margin, export plan.json (Zig/WASM via Zigar).",
   "type": "module",
   "scripts": {
