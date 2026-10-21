@@ -139,6 +139,14 @@ const STEPS = {
   reserveMin: { step: 5, min: 0, max: 180, read: number, write: String },
 };
 
+// The slowest pace (s/km) on the stepper's grid: rounded down to its step, so the pace the
+// runner can set still makes every cutoff.
+export const slowestStep = (pace_s_per_km) =>
+  Math.max(
+    BOUNDS.pace_base_s_per_km.min,
+    Math.floor(pace_s_per_km / STEPS.pace.step) * STEPS.pace.step,
+  );
+
 // The field's text one step up (+1) or down (-1), snapped to the step and kept in bounds;
 // null when it can't move: a value that doesn't parse (the runner fixes it by typing), or
 // one already at its bound.

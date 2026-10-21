@@ -7,6 +7,7 @@ import {
   formFromSettings,
   planFileName,
   settingsFromForm,
+  slowestStep,
   stepText,
   supplyDefault,
 } from "./settings.js";
@@ -131,5 +132,13 @@ describe("stepText", () => {
   it("leaves a value that does not parse to the runner's typing", () => {
     expect(stepText("pace", "quick", 1)).toBeNull();
     expect(stepText("carbs", "", 1)).toBeNull();
+  });
+});
+
+describe("slowestStep", () => {
+  it("rounds the slowest pace down to the stepper's grid, never past the fastest", () => {
+    expect(slowestStep(492)).toBe(490);
+    expect(slowestStep(495)).toBe(495);
+    expect(slowestStep(121)).toBe(120);
   });
 });

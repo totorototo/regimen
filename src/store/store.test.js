@@ -61,6 +61,22 @@ describe("store", () => {
     expect(state.utc_offset_s).toBeNull();
   });
 
+  it("keeps the slowest pace that makes every cutoff, from the course and each plan", async () => {
+    const loadCourse = vi.fn(async () => ({
+      ...built(DEFAULT_SETTINGS),
+      slowest_pace_s_per_km: 492,
+    }));
+    const buildPlan = vi.fn(async (settings) => ({
+      ...built(settings),
+      slowest_pace_s_per_km: 470,
+    }));
+    const { store } = await ready(fakeClient({ loadCourse, buildPlan }));
+    expect(store.getState().slowest_pace_s_per_km).toBe(492);
+    store.getState().setField("fatigue", "0.004");
+    await vi.runAllTimersAsync();
+    expect(store.getState().slowest_pace_s_per_km).toBe(470);
+  });
+
   it("keeps the course's race clock", async () => {
     const loadCourse = vi.fn(async () => ({ ...built(DEFAULT_SETTINGS), utc_offset_s: 7200 }));
     const { store } = await ready(fakeClient({ loadCourse }));

@@ -49,6 +49,23 @@ assert.equal(loaded.profile[0].distance_m, 0);
 assert(Math.abs(loaded.profile.at(-1).distance_m - plan.course.distance_m) < 1, "to the finish");
 assert(loaded.profile.every((point) => Number.isFinite(point.elevation_m)));
 assert.equal(loaded.utc_offset_s, null, "a course timed in UTC says nothing of its zone");
+assert(Number.isInteger(loaded.slowest_pace_s_per_km), "the fixture's cutoffs can be made");
+const atSlowest = await call("buildPlan", {
+  settings: { pace_base_s_per_km: loaded.slowest_pace_s_per_km },
+});
+assert(
+  atSlowest.result.plan.entries
+    .slice(1)
+    .every((entry) => entry.margin_s === null || entry.margin_s >= 0),
+  "at the slowest pace every cutoff holds",
+);
+const pastSlowest = await call("buildPlan", {
+  settings: { pace_base_s_per_km: loaded.slowest_pace_s_per_km + 1 },
+});
+assert(
+  pastSlowest.result.plan.entries.some((entry) => entry.margin_s < 0),
+  "a second slower misses one",
+);
 const finish = (p) => p.entries[p.entries.length - 1].duration_s_arrival;
 console.log(
   `loaded ${plan.course.name}: ${plan.entries.length} checkpoints, ` +

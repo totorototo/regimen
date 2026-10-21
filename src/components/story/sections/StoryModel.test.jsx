@@ -80,4 +80,35 @@ describe("StoryModel", () => {
     expect(screen.queryByRole("group", { name: "Carbs" })).toBeNull();
     expect(useStore.getState().settings.fueling).toBeNull();
   });
+
+  describe("the slowest pace on time", () => {
+    const slowest = () => screen.queryByRole("button", { name: /slowest that makes every cutoff/ });
+
+    it("offers it, rounded to the step, and sets it", () => {
+      useStore.setState({ slowest_pace_s_per_km: 492 });
+      render(<StoryModel />);
+      expect(slowest()).toHaveAccessibleName(
+        "Set the flat pace to 8:10 per km, the slowest that makes every cutoff",
+      );
+      expect(slowest()).toHaveTextContent("Slowest on time8:10 min/km");
+      fireEvent.click(slowest());
+      expect(value("pace")).toHaveTextContent("8:10 min/km");
+      // Set: nothing more to press.
+      expect(slowest()).toBeDisabled();
+    });
+
+    it("says when no pace makes them", () => {
+      render(<StoryModel />);
+      expect(slowest()).toBeNull();
+      expect(screen.getByText(/No pace from 2:00\/km makes every cutoff/)).toBeInTheDocument();
+    });
+
+    it("is not there without cutoffs", () => {
+      const entries = readyState.plan.entries.map((entry) => ({ ...entry, margin_s: null }));
+      useStore.setState({ plan: { ...readyState.plan, entries }, slowest_pace_s_per_km: null });
+      render(<StoryModel />);
+      expect(slowest()).toBeNull();
+      expect(screen.queryByText(/makes every cutoff/)).toBeNull();
+    });
+  });
 });

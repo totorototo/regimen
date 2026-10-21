@@ -10,6 +10,7 @@ vi.mock("../../zig/regimen.zig", () => {
     openPlan: vi.fn(async () => slice('{"course_matches":true}')),
     courseProfile: vi.fn(async () => ({ typedArray: new Float64Array([0, 1400, 3000, 1650]) })),
     courseUtcOffset: vi.fn(async () => 7200),
+    slowestPace: vi.fn(async () => 492),
   };
 });
 
@@ -74,6 +75,34 @@ describe("handleMessage", () => {
     expect(refused.error).toBe("Checkpoints too few");
     await handleMessage({ id: 3, type: "buildPlan", payload: { settings: {} } });
     expect([...zig.buildPlan.mock.calls.at(-1)[0]]).toEqual([5]);
+  });
+
+  it("bisects the slowest pace again only for other fatigue or stops", async () => {
+    const settings = { pace_base_s_per_km: 500, fatigue_coefficient: 0.002, life_base_stop_s: 600 };
+    const loaded = await handleMessage({
+      id: 1,
+      type: "loadCourse",
+      payload: { gpx: bytes(4), settings },
+    });
+    expect(loaded.result.slowest_pace_s_per_km).toBe(492);
+    // The pace isn't one of its inputs: gpxz's default stands in for it.
+    expect(zig.slowestPace.mock.calls[0][1]).toEqual({
+      fatigue_coefficient: 0.002,
+      life_base_stop_s: 600,
+    });
+    const faster = { ...settings, pace_base_s_per_km: 420 };
+    const stepped = await handleMessage({
+      id: 2,
+      type: "buildPlan",
+      payload: { settings: faster },
+    });
+    expect(stepped.result.slowest_pace_s_per_km).toBe(492);
+    expect(zig.slowestPace).toHaveBeenCalledTimes(1);
+    zig.slowestPace.mockResolvedValueOnce(470);
+    const tired = { ...settings, fatigue_coefficient: 0.004 };
+    const result = await handleMessage({ id: 3, type: "buildPlan", payload: { settings: tired } });
+    expect(result.result.slowest_pace_s_per_km).toBe(470);
+    expect(zig.slowestPace).toHaveBeenCalledTimes(2);
   });
 
   it("answers an unknown request with an error", async () => {

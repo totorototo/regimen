@@ -8,6 +8,8 @@
 //! - `courseProfile`: the course's elevation at evenly spaced distances, for the line drawn
 //!   behind the page.
 //! - `courseUtcOffset`: the race clock's offset from UTC, for the times the page writes.
+//! - `slowestPace`: the slowest flat pace that still makes every cutoff, for the model's
+//!   fatigue and stops.
 //!
 //! JSON rather than Zig structs crosses the boundary on purpose: a plan is a tree of optional
 //! fields and slices, which Zigar would expose as proxies over WASM memory that the caller
@@ -99,7 +101,70 @@ pub fn courseUtcOffset(gpx_bytes: []const u8) !?i32 {
     return utc_offset_read(scratch_allocator, gpx_bytes);
 }
 
+/// The slowest flat pace (s/km, whole seconds) at which every cutoff holds, the rest of
+/// `settings` kept: what the runner can afford, in place of stepping until nothing is Over.
+/// Null when the course has no cutoff, or when even the fastest pace misses one (a stop
+/// alone runs past it). Fueling doesn't move the times, so it's ignored.
+pub fn slowestPace(gpx_bytes: []const u8, settings: PlanSettings) !?f64 {
+    return pace_slowest(scratch_allocator, gpx_bytes, settings);
+}
+
 // Implementation (snake_case, testable with any pair of allocators)
+
+fn pace_slowest(scratch: std.mem.Allocator, gpx_bytes: []const u8, settings: PlanSettings) !?f64 {
+    if (gpx_bytes.len > gpx_bytes_max) return error.FileTooLarge;
+    var model = try settings_check(&settings);
+    var data = try gpxz.parse(scratch, gpx_bytes, &model);
+    defer data.deinit(scratch);
+    const entries = data.plan orelse return error.CheckpointsTooFew;
+    if (entries.len < 2) return error.CheckpointsTooFew;
+    if (!cutoffs_any(entries)) return null;
+
+    // why bisect: a slower pace arrives later at every checkpoint, so the cutoffs hold up to
+    // one pace and miss past it. The parse is done once; each step is one pass of the model.
+    var fast: f64 = pace_base_s_per_km_min;
+    var slow: f64 = pace_base_s_per_km_max;
+    model.pace_base_s_per_km = fast;
+    if (!try cutoffs_hold(scratch, &data, &model)) return null;
+    model.pace_base_s_per_km = slow;
+    if (try cutoffs_hold(scratch, &data, &model)) return slow;
+    // Invariant: `fast` holds, `slow` misses. Whole seconds: 12 steps over the bounds.
+    while (slow - fast > 1) {
+        const middle = @floor((fast + slow) / 2);
+        model.pace_base_s_per_km = middle;
+        if (try cutoffs_hold(scratch, &data, &model)) fast = middle else slow = middle;
+    }
+    assert(fast >= pace_base_s_per_km_min and fast < pace_base_s_per_km_max);
+    return fast;
+}
+
+/// Whether a checkpoint past the first has a cutoff: the first's `<time>` is the start.
+fn cutoffs_any(entries: []const gpxz.PlanEntry) bool {
+    for (entries[1..]) |*entry| {
+        if (entry.margin_s != null) return true;
+    }
+    return false;
+}
+
+/// Whether the plan at `model` reaches every checkpoint by its cutoff.
+fn cutoffs_hold(
+    scratch: std.mem.Allocator,
+    data: *const gpxz.GPXData,
+    model: *const gpxz.Settings,
+) !bool {
+    const entries = (try gpxz.calibration.plan_compute(
+        scratch,
+        &data.trace,
+        data.waypoints,
+        model,
+    )) orelse return error.CheckpointsTooFew;
+    defer scratch.free(entries);
+    if (entries.len < 2) return error.CheckpointsTooFew;
+    for (entries[1..]) |*entry| {
+        if (entry.margin_s) |margin_s| if (margin_s < 0) return false;
+    }
+    return true;
+}
 
 fn utc_offset_read(scratch: std.mem.Allocator, gpx_bytes: []const u8) !?i32 {
     if (gpx_bytes.len > gpx_bytes_max) return error.FileTooLarge;
@@ -603,4 +668,54 @@ test "courseUtcOffset: the first timed waypoint's offset, null in UTC or without
 test "courseUtcOffset: a malformed waypoint is gpxz's parse error" {
     const broken = "<gpx><wpt lat=\"91\" lon=\"0\"></wpt></gpx>";
     try testing.expect(std.meta.isError(utc_offset_read(testing.allocator, broken)));
+}
+
+test "slowestPace: the slowest pace that holds, one second more misses" {
+    const pace = (try pace_slowest(testing.allocator, fixture_gpx, .{})).?;
+    try testing.expect(pace >= pace_base_s_per_km_min and pace < pace_base_s_per_km_max);
+    try testing.expectEqual(@floor(pace), pace);
+
+    var data = try gpxz.parse(testing.allocator, fixture_gpx, &.{});
+    defer data.deinit(testing.allocator);
+    var model: gpxz.Settings = .{ .pace_base_s_per_km = pace };
+    try testing.expect(try cutoffs_hold(testing.allocator, &data, &model));
+    model.pace_base_s_per_km = pace + 1;
+    try testing.expect(!try cutoffs_hold(testing.allocator, &data, &model));
+}
+
+test "slowestPace: more fatigue leaves a faster pace" {
+    const fresh = (try pace_slowest(testing.allocator, fixture_gpx, .{
+        .fatigue_coefficient = 0,
+    })).?;
+    const tired = (try pace_slowest(testing.allocator, fixture_gpx, .{
+        .fatigue_coefficient = fatigue_coefficient_max,
+    })).?;
+    try testing.expect(tired < fresh);
+}
+
+test "slowestPace: null without cutoffs, and when no pace makes them" {
+    const untimed =
+        \\<gpx><wpt lat="42.80" lon="0.30"><name>Start</name><type>Start</type></wpt>
+        \\<wpt lat="42.82" lon="0.30"><name>Finish</name><type>Arrival</type></wpt>
+        \\<trk><trkseg><trkpt lat="42.80" lon="0.30"><ele>800</ele></trkpt>
+        \\<trkpt lat="42.81" lon="0.30"><ele>850</ele></trkpt>
+        \\<trkpt lat="42.82" lon="0.30"><ele>900</ele></trkpt></trkseg></trk></gpx>
+    ;
+    try testing.expectEqual(@as(?f64, null), try pace_slowest(testing.allocator, untimed, .{}));
+    // A minute for 2.2 km: under 2:00/km, Regimen's fastest.
+    const impossible =
+        \\<gpx><wpt lat="42.80" lon="0.30"><name>Start</name><type>Start</type>
+        \\<time>2026-08-21T05:00:00Z</time></wpt>
+        \\<wpt lat="42.82" lon="0.30"><name>Finish</name><type>Arrival</type>
+        \\<time>2026-08-21T05:01:00Z</time></wpt>
+        \\<trk><trkseg><trkpt lat="42.80" lon="0.30"><ele>800</ele></trkpt>
+        \\<trkpt lat="42.81" lon="0.30"><ele>850</ele></trkpt>
+        \\<trkpt lat="42.82" lon="0.30"><ele>900</ele></trkpt></trkseg></trk></gpx>
+    ;
+    try testing.expectEqual(@as(?f64, null), try pace_slowest(testing.allocator, impossible, .{}));
+}
+
+test "slowestPace: settings out of bounds are refused" {
+    const result = pace_slowest(testing.allocator, fixture_gpx, .{ .pace_base_s_per_km = 60 });
+    try testing.expectError(error.SettingsInvalid, result);
 }
