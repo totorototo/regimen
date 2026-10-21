@@ -15,6 +15,7 @@ import {
   formatElapsed,
   formatKm,
   formatMargin,
+  formatShortClock,
 } from "../../../utils/format.js";
 import StorySection from "../StorySection.jsx";
 import style from "./StoryCheckpoints.style.js";
@@ -33,13 +34,37 @@ function Leg({ leg }) {
   );
 }
 
-// The margin in words, under the name; its badge (Tight or Over only) sits by the time.
-function Margin({ margin_s }) {
+// The margin in words, under the name, and when the checkpoint closes; its badge (Tight or
+// Over only) sits by the time.
+function Margin({ margin_s, entry, timeZone }) {
   if (!Number.isFinite(margin_s)) return <p className="margin none">No cutoff</p>;
   return (
     <p className={margin_s < 0 ? "margin over" : "margin"}>
       {margin_s < 0 ? `Over by ${formatMargin(-margin_s)}` : `${formatMargin(margin_s)} to spare`}
+      {Number.isFinite(entry.epoch_s_cutoff) && (
+        <span className="closes">
+          {" "}
+          · closes {formatShortClock(entry.epoch_s_cutoff, timeZone, entry.epoch_s_arrival)}
+        </span>
+      )}
     </p>
+  );
+}
+
+// The arrival on the race's clock, the time from the start beside it.
+// why: cutoffs are published as clock times, so the clock is what the runner checks; the
+// elapsed time is what the pace model reasons in. Without a start time there is no clock.
+function Arrival({ entry, previous, timeZone }) {
+  if (!Number.isFinite(entry.epoch_s_arrival)) {
+    return <span className="time">{formatElapsed(entry.duration_s_arrival)}</span>;
+  }
+  return (
+    <>
+      <span className="elapsed">{formatElapsed(entry.duration_s_arrival)}</span>
+      <span className="time">
+        {formatShortClock(entry.epoch_s_arrival, timeZone, previous?.epoch_s_arrival)}
+      </span>
+    </>
   );
 }
 
@@ -73,7 +98,7 @@ function Refill({ entry, index, supply, carry }) {
 
 // Terminus's checkpoint row: name and distance left, the time (and its badge) right, then
 // the margin, the leg that leads here and, with fueling on, the refill.
-function Checkpoint({ entry, index, leg, fueling, carry, last }) {
+function Checkpoint({ entry, previous, index, leg, fueling, carry, last, timeZone }) {
   const margin_s = cutoffMargin(entry, index);
   const tier = marginTier(margin_s);
   const type = checkpointType(entry);
@@ -90,10 +115,10 @@ function Checkpoint({ entry, index, leg, fueling, carry, last }) {
         </div>
         <div className="eta">
           {tier && tier !== "ok" && <span className={`badge ${tier}`}>{TIER_WORDS[tier]}</span>}
-          <span className="time">{formatElapsed(entry.duration_s_arrival)}</span>
+          <Arrival entry={entry} previous={previous} timeZone={timeZone} />
         </div>
       </div>
-      {index > 0 && <Margin margin_s={margin_s} />}
+      {index > 0 && <Margin margin_s={margin_s} entry={entry} timeZone={timeZone} />}
       {leg && <Leg leg={leg} />}
       {fueling && !last && (
         <Refill entry={entry} index={index} supply={fueling.supplies[index]} carry={carry} />
@@ -119,6 +144,10 @@ export function hiddenNews(entries, from) {
     .join(", ");
 }
 
+// "Europe/Paris": the zone's name, the device's for an undefined one.
+const clockZoneName = (timeZone) =>
+  new Intl.DateTimeFormat(undefined, { timeZone }).resolvedOptions().timeZone;
+
 function StoryCheckpoints({ className }) {
   const [expanded, setExpanded] = useState(false);
   const plan = useStore((state) => state.plan);
@@ -142,22 +171,30 @@ function StoryCheckpoints({ className }) {
   const shown = collapsed ? plan.entries.slice(0, COLLAPSED) : plan.entries;
   const hidden = plan.entries.length - shown.length;
   const news = collapsed ? hiddenNews(plan.entries, COLLAPSED) : "";
+  // The device's zone until the course carries its own.
+  const timeZone = undefined;
+  const clocked = Number.isFinite(plan.entries[0]?.epoch_s_arrival);
 
   return (
     <StorySection className={className} eyebrow="The checkpoints" title="Against the cutoffs">
       <p className="lede">
-        Times from the start. The tag before each leg is how hard it climbs, from runnable to steep.
+        {clocked
+          ? `Arrivals on the ${clockZoneName(timeZone)} clock, the time from the start beside them.`
+          : "Times from the start."}{" "}
+        The tag before each leg is how hard it climbs, from runnable to steep.
       </p>
       <ol aria-label="Checkpoints" aria-busy={planStatus === "computing"}>
         {shown.map((entry, index) => (
           <Checkpoint
             key={`${entry.index}-${entry.name}`}
             entry={entry}
+            previous={shown[index - 1]}
             index={index}
             leg={legList[index]}
             fueling={fueling}
             carry={plan.carry[index]}
             last={index === last}
+            timeZone={timeZone}
           />
         ))}
       </ol>

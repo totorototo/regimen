@@ -92,6 +92,18 @@ const style = (Component) => styled(Component)`
     font-variant-numeric: tabular-nums;
   }
 
+  .elapsed {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .closes {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-muted);
+  }
+
   .badge {
     ${badge}
   }
