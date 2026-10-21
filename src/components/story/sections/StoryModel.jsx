@@ -3,8 +3,10 @@ import { Plus } from "@styled-icons/feather/Plus";
 import { memo, useState } from "react";
 
 import { useHoldRepeat } from "../../../hooks/useHoldRepeat.js";
-import { stepText } from "../../../plan/settings.js";
+import { slowestStep, stepText } from "../../../plan/settings.js";
+import { cutoffMargin } from "../../../plan/summary.js";
 import useStore from "../../../store/store.js";
+import { formatPace, parsePace } from "../../../utils/format.js";
 import StorySection from "../StorySection.jsx";
 import style from "./StoryModel.style.js";
 
@@ -112,6 +114,40 @@ function Stepper({ field, onFocusChange }) {
   );
 }
 
+// The slowest pace that makes every cutoff, as a command that sets it: what the runner can
+// afford, in place of stepping − until nothing is Over. Nothing without cutoffs.
+function SlowestPace() {
+  const slowest = useStore((state) => state.slowest_pace_s_per_km);
+  const pace = useStore((state) => parsePace(state.form.pace));
+  const hasCutoffs = useStore(
+    (state) =>
+      state.plan?.entries.some((entry, index) => cutoffMargin(entry, index) !== null) ?? false,
+  );
+  const setField = useStore((state) => state.setField);
+  if (!hasCutoffs) return null;
+  if (slowest === null) {
+    return (
+      <p className="off">No pace from 2:00/km makes every cutoff: the stops alone miss one.</p>
+    );
+  }
+  const target = slowestStep(slowest);
+  const yours = pace === target;
+  return (
+    <button
+      type="button"
+      className={yours ? "action-btn command slowest active" : "action-btn command slowest"}
+      aria-label={`Set the flat pace to ${formatPace(target)} per km, the slowest that makes every cutoff`}
+      disabled={yours}
+      onClick={() => setField("pace", formatPace(target))}
+    >
+      <span className="command-name">Slowest on time</span>
+      <span className="command-value">
+        {formatPace(target)} <span className="unit">min/km</span>
+      </span>
+    </button>
+  );
+}
+
 // Fueling as Terminus's Outdoor mode: one command that is on or off.
 function FuelingCommand() {
   const on = useStore((state) => state.form.fueling);
@@ -156,6 +192,7 @@ function StoryModel({ className }) {
       <div className="commands">
         <h3 className="group-label">Pace</h3>
         {PACE.map(command)}
+        <SlowestPace />
         <Hint fields={PACE} focused={focused} />
         <FuelingCommand />
         {fueling ? (

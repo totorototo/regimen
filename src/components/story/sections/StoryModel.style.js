@@ -47,6 +47,13 @@ const style = (Component) => styled(Component)`
     margin-top: 0.25rem;
   }
 
+  /* Set: nothing to press, but the pace in use, not an unavailable command (the fueling
+     command's on tint, at full strength). */
+  .command.slowest:disabled {
+    opacity: 1;
+    cursor: default;
+  }
+
   .command.active {
     background: color-mix(in srgb, var(--color-primary) 12%, var(--color-background));
   }

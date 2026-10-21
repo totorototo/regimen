@@ -11,6 +11,7 @@ import {
   courseProfile,
   courseUtcOffset,
   openPlan,
+  slowestPace,
 } from "../../zig/regimen.zig";
 
 let ready = null;
@@ -23,7 +24,7 @@ function init() {
 // The course as it was loaded.
 // why kept here: the plan's hash is of these exact bytes, and the model changes far more
 // often than the course.
-const course = { bytes: null };
+const course = { bytes: null, slowest: null };
 
 function loadedCourse() {
   if (!course.bytes) throw new Error("No course loaded");
@@ -48,6 +49,19 @@ function profilePoints(slice) {
   return points;
 }
 
+// The slowest pace that makes every cutoff, for `settings`' fatigue and stops: the pace is
+// what it answers, so a step of it doesn't bisect again. One per course, the last asked.
+async function slowestFor(bytes, settings, kept) {
+  const key = `${settings.fatigue_coefficient}|${settings.life_base_stop_s}`;
+  if (kept?.key === key) return kept;
+  const model = {};
+  if (settings.fatigue_coefficient !== undefined) {
+    model.fatigue_coefficient = settings.fatigue_coefficient;
+  }
+  if (settings.life_base_stop_s !== undefined) model.life_base_stop_s = settings.life_base_stop_s;
+  return { key, pace: await slowestPace(bytes, model) };
+}
+
 export const handlers = {
   async loadCourse({ gpx, settings }) {
     const bytes = new Uint8Array(gpx);
@@ -55,11 +69,15 @@ export const handlers = {
     const result = planResult(await buildPlan(bytes, settings));
     const profile = profilePoints(await courseProfile(bytes));
     const utc_offset_s = await courseUtcOffset(bytes);
+    const slowest = await slowestFor(bytes, settings, null);
     course.bytes = bytes;
-    return { ...result, profile, utc_offset_s };
+    course.slowest = slowest;
+    return { ...result, profile, utc_offset_s, slowest_pace_s_per_km: slowest.pace };
   },
   async buildPlan({ settings }) {
-    return planResult(await buildPlan(loadedCourse(), settings));
+    const result = planResult(await buildPlan(loadedCourse(), settings));
+    course.slowest = await slowestFor(loadedCourse(), settings, course.slowest);
+    return { ...result, slowest_pace_s_per_km: course.slowest.pace };
   },
   // A saved plan.json, read and checked against the course that is open.
   async openPlan({ plan }) {

@@ -58,9 +58,15 @@ export const createStore = (getClient = createWorkerClient) => {
       const run = ++planRun;
       set({ planStatus: "computing" });
       try {
-        const { text, plan } = await worker().buildPlan(get().settings);
+        const { text, plan, slowest_pace_s_per_km } = await worker().buildPlan(get().settings);
         if (mine !== generation || run !== planRun) return;
-        set({ planText: text, plan, planError: null, planStatus: "ready" });
+        set({
+          planText: text,
+          plan,
+          slowest_pace_s_per_km,
+          planError: null,
+          planStatus: "ready",
+        });
       } catch (err) {
         if (mine !== generation || run !== planRun) return;
         set({ planText: null, plan: null, planError: err.message, planStatus: "error" });
@@ -99,6 +105,9 @@ export const createStore = (getClient = createWorkerClient) => {
       // The race clock's offset from UTC (s), or null for the device's clock: what the
       // checkpoints' times are read on.
       utc_offset_s: null,
+      // The slowest flat pace (s/km) that makes every cutoff at the model's fatigue and stops,
+      // or null: no cutoff, or none a pace can make.
+      slowest_pace_s_per_km: null,
       // plan.json as gpxz wrote it, and parsed for the table.
       planText: null,
       plan: null,
@@ -128,15 +137,14 @@ export const createStore = (getClient = createWorkerClient) => {
         });
         try {
           const buffer = await file.arrayBuffer();
-          const { text, plan, profile, utc_offset_s } = await worker().loadCourse(
-            buffer,
-            get().settings,
-          );
+          const { text, plan, profile, utc_offset_s, slowest_pace_s_per_km } =
+            await worker().loadCourse(buffer, get().settings);
           if (mine !== generation) return;
           set({
             status: "ready",
             profile,
             utc_offset_s,
+            slowest_pace_s_per_km,
             planText: text,
             plan,
             planError: null,
