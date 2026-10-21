@@ -83,6 +83,7 @@ export const readyState = {
     { distance_m: 3000, elevation_m: 1650 },
     { distance_m: 6000, elevation_m: 1410 },
   ],
+  utc_offset_s: null,
   settings: DEFAULT_SETTINGS,
   form: formFromSettings(DEFAULT_SETTINGS),
   formErrors: {},

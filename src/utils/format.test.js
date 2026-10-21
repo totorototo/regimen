@@ -8,7 +8,10 @@ import {
   formatLitres,
   formatMargin,
   formatPace,
+  formatRaceClock,
+  formatUtcOffset,
   parsePace,
+  raceClock,
 } from "./format.js";
 
 describe("format", () => {
@@ -67,5 +70,26 @@ describe("format", () => {
     expect(formatCarry(undefined)).toBe("–");
     // Sodium rounds up to 0.1 g, as the rest.
     expect(formatCarry({ ...full, sodium_mg: 2601 })).toBe("455 g · 1.65 L · 2.7 g Na");
+  });
+
+  it("writes an offset as the zone's short name", () => {
+    expect(formatUtcOffset(7200)).toBe("UTC+2");
+    expect(formatUtcOffset(-16200)).toBe("UTC−4:30");
+    expect(formatUtcOffset(0)).toBe("UTC");
+    expect(formatUtcOffset(null)).toBe("UTC");
+  });
+
+  it("reads times on the race's clock, the weekday once the day changes", () => {
+    // Fri 21 Aug 2026, 23:00 UTC: Sat 01:00 in the Pyrenees.
+    const epoch = Date.UTC(2026, 7, 21, 23) / 1000;
+    const pyrenees = raceClock(7200);
+    expect(pyrenees.name).toBe("the race's clock (UTC+2)");
+    expect(formatRaceClock(epoch, pyrenees, null)).toBe("Sat 01:00");
+    expect(formatRaceClock(epoch, pyrenees, epoch - 3600)).toBe("01:00");
+    // The tests run on UTC: there it's still Friday.
+    const device = raceClock(null);
+    expect(device.name).toBe("this device's clock (UTC)");
+    expect(formatRaceClock(epoch, device, epoch - 3600)).toBe("23:00");
+    expect(formatRaceClock(null, pyrenees, epoch)).toBe("–");
   });
 });

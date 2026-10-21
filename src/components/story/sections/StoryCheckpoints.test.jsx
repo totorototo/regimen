@@ -121,7 +121,7 @@ describe("StoryCheckpoints", () => {
     it("reads arrivals and cutoffs on the clock, the time from the start beside them", () => {
       useStore.setState({ plan: { ...readyState.plan, entries: clocked([0, 3600, 6000]) } });
       render(<StoryCheckpoints />);
-      expect(screen.getByText(/Arrivals on the UTC clock/)).toBeInTheDocument();
+      expect(screen.getByText(/Arrivals on this device's clock \(UTC\)/)).toBeInTheDocument();
       // The first row says the day; later ones only once it changes.
       expect(within(item("Start")).getByText("Fri 05:00")).toHaveClass("time");
       expect(within(item("Refuge")).getByText("06:00")).toHaveClass("time");
@@ -138,6 +138,17 @@ describe("StoryCheckpoints", () => {
       expect(within(item("Refuge")).getByText("23:00")).toHaveClass("time");
       expect(within(item("Finish")).getByText("Sat 07:00")).toHaveClass("time");
       expect(item("Finish")).toHaveTextContent("closes 07:10");
+    });
+
+    it("reads them on the race's clock when the course has its offset", () => {
+      useStore.setState({
+        plan: { ...readyState.plan, entries: clocked([0, 3600, 6000]) },
+        utc_offset_s: 7200,
+      });
+      render(<StoryCheckpoints />);
+      expect(screen.getByText(/Arrivals on the race's clock \(UTC\+2\)/)).toBeInTheDocument();
+      expect(within(item("Start")).getByText("Fri 07:00")).toHaveClass("time");
+      expect(item("Refuge")).toHaveTextContent("Over by 0h15 · closes 07:45");
     });
 
     it("keeps times from the start without one", () => {

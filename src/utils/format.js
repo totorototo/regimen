@@ -66,6 +66,35 @@ export function formatCarry(carry) {
   return parts.join(" · ");
 }
 
+// 7200 → "UTC+2", -16200 → "UTC−4:30", 0 or null → "UTC". From Retrace's format.js.
+export function formatUtcOffset(utc_offset_s) {
+  if (!utc_offset_s) return "UTC";
+  const minutes = Math.round(Math.abs(utc_offset_s) / 60);
+  const [hours, rest] = [Math.floor(minutes / 60), minutes % 60];
+  return `UTC${utc_offset_s > 0 ? "+" : "−"}${hours}${rest ? `:${String(rest).padStart(2, "0")}` : ""}`;
+}
+
+// The clock times are read on: the race's, from the course's offset, or else the device's.
+// why shift and read on UTC: Retrace's way with the watch's offset; Intl's offset zones
+// ("+02:00") aren't in every browser yet.
+export function raceClock(utc_offset_s) {
+  if (!Number.isFinite(utc_offset_s)) {
+    const name = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return { timeZone: undefined, shift_s: 0, name: `this device's clock (${name})` };
+  }
+  return {
+    timeZone: "UTC",
+    shift_s: utc_offset_s,
+    name: `the race's clock (${formatUtcOffset(utc_offset_s)})`,
+  };
+}
+
+// formatShortClock on a raceClock.
+export function formatRaceClock(epochSeconds, clock, referenceEpoch) {
+  const shift = (epoch) => (Number.isFinite(epoch) ? epoch + clock.shift_s : epoch);
+  return formatShortClock(shift(epochSeconds), clock.timeZone, shift(referenceEpoch));
+}
+
 // An instant as "08:38" when it falls on the same day as `referenceEpoch` on the zone's clock,
 // else "Sun 05:00": a race plan reads in hours, with the weekday only once it rolls over.
 // From Waymark's format.js. An undefined zone is the device's.

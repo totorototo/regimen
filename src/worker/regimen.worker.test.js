@@ -9,6 +9,7 @@ vi.mock("../../zig/regimen.zig", () => {
     buildPlan: vi.fn(async () => slice('{\n  "schema_version": 1\n}\n')),
     openPlan: vi.fn(async () => slice('{"course_matches":true}')),
     courseProfile: vi.fn(async () => ({ typedArray: new Float64Array([0, 1400, 3000, 1650]) })),
+    courseUtcOffset: vi.fn(async () => 7200),
   };
 });
 
@@ -40,6 +41,7 @@ describe("handleMessage", () => {
       { distance_m: 0, elevation_m: 1400 },
       { distance_m: 3000, elevation_m: 1650 },
     ]);
+    expect(result.utc_offset_s).toBe(7200);
     const [course, passed] = zig.buildPlan.mock.calls[0];
     expect([...course]).toEqual([1, 2, 3]);
     expect(passed).toBe(settings);
