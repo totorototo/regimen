@@ -24,8 +24,8 @@ const scratch_allocator = if (builtin.target.cpu.arch.isWasm())
 else
     std.heap.smp_allocator;
 
-/// Multi-day ultra GPX files are a few MiB; as gpxz's CLI bounds them.
-pub const gpx_bytes_max = 64 * 1024 * 1024;
+/// Multi-day ultra GPX files are a few MiB; gpxz's parse refuses more than this.
+pub const gpx_bytes_max = gpxz.gpx.bytes_max;
 
 const Supply = gpxz.fueling.Supply;
 
@@ -49,14 +49,12 @@ pub const FuelingSettings = struct {
     supplies: []const Supply = &.{},
 };
 
-/// The bounds a setting must fall in. They are errors, not asserts: the values come from a
-/// form, and the WASM build is ReleaseSmall, where a failed assert is undefined behaviour
-/// rather than a crash. Past them the model stops meaning anything (a 60:00 /km flat pace),
-/// and fatigue grows as exp(k·d), so a large k overflows the durations of a 300 km race.
+/// The bounds a setting must fall in: gpxz's (`Settings.validate`), except a stricter
+/// minimum pace. Regimen plans races, and nobody races under 2:00/km.
 pub const pace_base_s_per_km_min = 120.0;
-pub const pace_base_s_per_km_max = 3600.0;
-pub const fatigue_coefficient_max = 0.05;
-pub const life_base_stop_s_max: u32 = 24 * 3600;
+pub const pace_base_s_per_km_max = gpxz.pace_model.pace_base_s_per_km_max;
+pub const fatigue_coefficient_max = gpxz.pace_model.fatigue_coefficient_max;
+pub const life_base_stop_s_max = gpxz.pace_model.life_base_stop_s_max;
 /// Fueling's form bounds, a first guess: gpxz only needs finite, non-negative rates. Past
 /// them a value is a typo (1500 g/h for 150), not a plan.
 pub const carbs_g_per_h_max = 150.0;
@@ -126,18 +124,14 @@ fn profile_build(
 }
 
 fn settings_check(settings: *const PlanSettings) error{SettingsInvalid}!gpxz.Settings {
-    const pace = settings.pace_base_s_per_km;
-    if (!(pace >= pace_base_s_per_km_min and pace <= pace_base_s_per_km_max)) {
-        return error.SettingsInvalid;
-    }
-    const fatigue = settings.fatigue_coefficient;
-    if (!(fatigue >= 0 and fatigue <= fatigue_coefficient_max)) return error.SettingsInvalid;
-    if (settings.life_base_stop_s > life_base_stop_s_max) return error.SettingsInvalid;
+    // Regimen's own floor; NaN fails it too. gpxz checks the rest.
+    if (!(settings.pace_base_s_per_km >= pace_base_s_per_km_min)) return error.SettingsInvalid;
     const result: gpxz.Settings = .{
-        .pace_base_s_per_km = pace,
-        .fatigue_coefficient = fatigue,
+        .pace_base_s_per_km = settings.pace_base_s_per_km,
+        .fatigue_coefficient = settings.fatigue_coefficient,
         .life_base_stop_s = settings.life_base_stop_s,
     };
+    try result.validate();
     result.assert_valid();
     return result;
 }
