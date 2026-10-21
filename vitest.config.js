@@ -15,6 +15,8 @@ export default defineConfig({
   plugins: [zigStub, react()],
   test: {
     environment: "jsdom",
+    // Clock times on one zone, whatever the machine's: what a test reads doesn't move.
+    env: { TZ: "UTC" },
     globals: true,
     setupFiles: ["./src/setupTests.js"],
     include: ["src/**/*.test.{js,jsx}"],

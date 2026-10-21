@@ -107,6 +107,47 @@ describe("StoryCheckpoints", () => {
     expect(screen.queryByRole("button", { name: /more checkpoints/ })).toBeNull();
   });
 
+  describe("with a start time", () => {
+    // Fri 21 Aug 2026, 05:00 UTC (the tests run on UTC).
+    const start = Date.UTC(2026, 7, 21, 5) / 1000;
+    const clocked = (arrivals) =>
+      readyState.plan.entries.map((checkpoint, index) => ({
+        ...checkpoint,
+        duration_s_arrival: arrivals[index],
+        epoch_s_arrival: start + arrivals[index],
+        epoch_s_cutoff: index === 0 ? start : start + arrivals[index] + checkpoint.margin_s,
+      }));
+
+    it("reads arrivals and cutoffs on the clock, the time from the start beside them", () => {
+      useStore.setState({ plan: { ...readyState.plan, entries: clocked([0, 3600, 6000]) } });
+      render(<StoryCheckpoints />);
+      expect(screen.getByText(/Arrivals on the UTC clock/)).toBeInTheDocument();
+      // The first row says the day; later ones only once it changes.
+      expect(within(item("Start")).getByText("Fri 05:00")).toHaveClass("time");
+      expect(within(item("Refuge")).getByText("06:00")).toHaveClass("time");
+      expect(within(item("Refuge")).getByText("1h00")).toHaveClass("elapsed");
+      expect(item("Refuge")).toHaveTextContent("Over by 0h15 · closes 05:45");
+      expect(item("Finish")).toHaveTextContent("0h10 to spare · closes 06:50");
+    });
+
+    it("names the day again once the race runs past midnight", () => {
+      useStore.setState({
+        plan: { ...readyState.plan, entries: clocked([0, 18 * 3600, 26 * 3600]) },
+      });
+      render(<StoryCheckpoints />);
+      expect(within(item("Refuge")).getByText("23:00")).toHaveClass("time");
+      expect(within(item("Finish")).getByText("Sat 07:00")).toHaveClass("time");
+      expect(item("Finish")).toHaveTextContent("closes 07:10");
+    });
+
+    it("keeps times from the start without one", () => {
+      render(<StoryCheckpoints />);
+      expect(screen.getByText(/^Times from the start\./)).toBeInTheDocument();
+      expect(item("Refuge").querySelector(".elapsed")).toBeNull();
+      expect(item("Refuge")).not.toHaveTextContent("closes");
+    });
+  });
+
   it("shows a list only a little longer than six whole", () => {
     const entries = Array.from({ length: 8 }, (_, index) => entry({ name: `CP${index}`, index }));
     useStore.setState({ plan: { ...readyState.plan, entries } });

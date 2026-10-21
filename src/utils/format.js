@@ -65,3 +65,22 @@ export function formatCarry(carry) {
   if (carry.sodium_mg !== null) parts.push(`${Math.ceil(carry.sodium_mg / 100) / 10} g Na`);
   return parts.join(" · ");
 }
+
+// An instant as "08:38" when it falls on the same day as `referenceEpoch` on the zone's clock,
+// else "Sun 05:00": a race plan reads in hours, with the weekday only once it rolls over.
+// From Waymark's format.js. An undefined zone is the device's.
+export function formatShortClock(epochSeconds, timeZone, referenceEpoch) {
+  if (!Number.isFinite(epochSeconds)) return "–";
+  const day = (epoch) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(epoch * 1000));
+  const sameDay = Number.isFinite(referenceEpoch) && day(epochSeconds) === day(referenceEpoch);
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    weekday: sameDay ? undefined : "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(new Date(epochSeconds * 1000))
+    .replace(",", "");
+}
