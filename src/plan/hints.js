@@ -9,6 +9,10 @@ const GPX_HINTS = {
   ElevationMissing:
     "The track has no elevation, which the pace model needs. Export it again with elevation.",
   FileTooLarge: "The file is over 64 MB, more than any race route needs.",
+  PointsTooMany:
+    "The track has over a million points, far more than any race needs. Simplify it and export it again.",
+  WaypointsTooMany:
+    "The file has over 10,000 waypoints, more than any race has. Is it a course, or a waypoint library?",
 };
 const GPX_HINT_DEFAULT =
   "It does not look like a GPX file with a track. Try exporting it again from Waymark.";
