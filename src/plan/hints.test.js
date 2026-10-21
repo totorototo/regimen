@@ -6,6 +6,9 @@ describe("hints", () => {
   it("match gpxz's error by name, as Zig or as Zigar's words", () => {
     expect(gpxHint("CheckpointsTooFew")).toMatch(/Waymark/);
     expect(gpxHint("Checkpoints too few")).toBe(gpxHint("CheckpointsTooFew"));
+    // gpxz's input caps: a valid GPX that is too big.
+    expect(gpxHint("Points too many")).toMatch(/million points/);
+    expect(gpxHint("WaypointsTooMany")).toMatch(/10,000 waypoints/);
     expect(planHint("Schema version unsupported")).toMatch(/newer version/);
     expect(planHint("Plan invalid")).toMatch(/don't add up/);
   });
