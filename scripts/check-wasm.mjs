@@ -48,6 +48,7 @@ assert.equal(loaded.profile.length, 400, "the profile is 400 samples");
 assert.equal(loaded.profile[0].distance_m, 0);
 assert(Math.abs(loaded.profile.at(-1).distance_m - plan.course.distance_m) < 1, "to the finish");
 assert(loaded.profile.every((point) => Number.isFinite(point.elevation_m)));
+assert.equal(loaded.utc_offset_s, null, "a course timed in UTC says nothing of its zone");
 const finish = (p) => p.entries[p.entries.length - 1].duration_s_arrival;
 console.log(
   `loaded ${plan.course.name}: ${plan.entries.length} checkpoints, ` +

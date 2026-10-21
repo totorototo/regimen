@@ -21,7 +21,11 @@ const plan = (model = DEFAULT_SETTINGS) => ({
   entries: SUPPLIES_DEFAULT.map((_, index) => ({ name: `CP${index}` })),
   carry: [],
 });
-const built = (model) => ({ text: JSON.stringify(plan(model)), plan: plan(model) });
+const built = (model) => ({
+  text: JSON.stringify(plan(model)),
+  plan: plan(model),
+  utc_offset_s: null,
+});
 
 function fakeClient(overrides = {}) {
   return {
@@ -54,6 +58,13 @@ describe("store", () => {
     expect(state.fileName).toBe("race.gpx");
     expect(state.plan.model).toEqual(DEFAULT_SETTINGS);
     expect(client.loadCourse.mock.calls[0][1]).toEqual(DEFAULT_SETTINGS);
+    expect(state.utc_offset_s).toBeNull();
+  });
+
+  it("keeps the course's race clock", async () => {
+    const loadCourse = vi.fn(async () => ({ ...built(DEFAULT_SETTINGS), utc_offset_s: 7200 }));
+    const { store } = await ready(fakeClient({ loadCourse }));
+    expect(store.getState().utc_offset_s).toBe(7200);
   });
 
   it("shows gpxz's refusal of a course", async () => {

@@ -5,7 +5,13 @@
 // { id, error }. The course arrives once, transferred (loadCourse), and stays here: a change
 // to the model only sends the model.
 
-import { __zigar, buildPlan, courseProfile, openPlan } from "../../zig/regimen.zig";
+import {
+  __zigar,
+  buildPlan,
+  courseProfile,
+  courseUtcOffset,
+  openPlan,
+} from "../../zig/regimen.zig";
 
 let ready = null;
 
@@ -48,8 +54,9 @@ export const handlers = {
     // Build before keeping: a file gpxz refuses must not replace the course already open.
     const result = planResult(await buildPlan(bytes, settings));
     const profile = profilePoints(await courseProfile(bytes));
+    const utc_offset_s = await courseUtcOffset(bytes);
     course.bytes = bytes;
-    return { ...result, profile };
+    return { ...result, profile, utc_offset_s };
   },
   async buildPlan({ settings }) {
     return planResult(await buildPlan(loadedCourse(), settings));

@@ -96,6 +96,9 @@ export const createStore = (getClient = createWorkerClient) => {
       supplies: [],
       // The course's elevation, [{ distance_m, elevation_m }], drawn behind the story.
       profile: [],
+      // The race clock's offset from UTC (s), or null for the device's clock: what the
+      // checkpoints' times are read on.
+      utc_offset_s: null,
       // plan.json as gpxz wrote it, and parsed for the table.
       planText: null,
       plan: null,
@@ -125,11 +128,15 @@ export const createStore = (getClient = createWorkerClient) => {
         });
         try {
           const buffer = await file.arrayBuffer();
-          const { text, plan, profile } = await worker().loadCourse(buffer, get().settings);
+          const { text, plan, profile, utc_offset_s } = await worker().loadCourse(
+            buffer,
+            get().settings,
+          );
           if (mine !== generation) return;
           set({
             status: "ready",
             profile,
+            utc_offset_s,
             planText: text,
             plan,
             planError: null,

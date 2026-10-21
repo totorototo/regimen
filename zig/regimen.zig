@@ -7,6 +7,7 @@
 //!   course that is open.
 //! - `courseProfile`: the course's elevation at evenly spaced distances, for the line drawn
 //!   behind the page.
+//! - `courseUtcOffset`: the race clock's offset from UTC, for the times the page writes.
 //!
 //! JSON rather than Zig structs crosses the boundary on purpose: a plan is a tree of optional
 //! fields and slices, which Zigar would expose as proxies over WASM memory that the caller
@@ -90,7 +91,28 @@ pub fn courseProfile(allocator: std.mem.Allocator, gpx_bytes: []const u8) ![]f64
     return profile_build(scratch_allocator, allocator, gpx_bytes);
 }
 
+/// The race clock's offset from UTC in seconds: that of the first waypoint's `<time>`, which
+/// Waymark writes on the race's zone. Null without one, or for one in UTC.
+/// why null for UTC: a `Z` is also what other tools write whatever the race's zone, so it says
+/// nothing; the page then reads times on the device's clock, and says so.
+pub fn courseUtcOffset(gpx_bytes: []const u8) !?i32 {
+    return utc_offset_read(scratch_allocator, gpx_bytes);
+}
+
 // Implementation (snake_case, testable with any pair of allocators)
+
+fn utc_offset_read(scratch: std.mem.Allocator, gpx_bytes: []const u8) !?i32 {
+    if (gpx_bytes.len > gpx_bytes_max) return error.FileTooLarge;
+    // The waypoints only: the trace isn't needed for a clock.
+    const waypoints = try gpxz.gpx.waypoints_read(scratch, gpx_bytes);
+    defer gpxz.gpx.waypoints_free(scratch, waypoints);
+    for (waypoints) |*waypoint| {
+        if (waypoint.epoch_s == null) continue;
+        assert(@abs(waypoint.utc_offset_s) <= gpxz.time.utc_offset_s_max);
+        return if (waypoint.utc_offset_s == 0) null else waypoint.utc_offset_s;
+    }
+    return null;
+}
 
 /// Enough to draw a 1000-unit tall line without visible steps; a fixed count keeps the
 /// transfer small whatever the file's resolution.
@@ -561,4 +583,24 @@ test "courseProfile: a file that is not a GPX is refused" {
         testing.allocator.free(profile);
         return error.TestUnexpectedResult;
     } else |_| {}
+}
+
+test "courseUtcOffset: the first timed waypoint's offset, null in UTC or without a time" {
+    const paris =
+        \\<gpx><wpt lat="42.8" lon="0.3"><name>Aid</name></wpt>
+        \\<wpt lat="42.8" lon="0.3"><name>Start</name><time>2026-08-21T05:00:00+02:00</time></wpt>
+        \\<wpt lat="42.9" lon="0.3"><name>Finish</name><time>2026-08-22T05:00:00Z</time></wpt>
+        \\</gpx>
+    ;
+    try testing.expectEqual(@as(?i32, 7200), try utc_offset_read(testing.allocator, paris));
+    const utc = "<gpx><wpt lat=\"42.8\" lon=\"0.3\"><time>2026-08-21T03:00:00Z</time></wpt></gpx>";
+    try testing.expectEqual(@as(?i32, null), try utc_offset_read(testing.allocator, utc));
+    const untimed = "<gpx><wpt lat=\"42.8\" lon=\"0.3\"><name>Start</name></wpt></gpx>";
+    try testing.expectEqual(@as(?i32, null), try utc_offset_read(testing.allocator, untimed));
+    try testing.expectEqual(@as(?i32, null), try utc_offset_read(testing.allocator, fixture_gpx));
+}
+
+test "courseUtcOffset: a malformed waypoint is gpxz's parse error" {
+    const broken = "<gpx><wpt lat=\"91\" lon=\"0\"></wpt></gpx>";
+    try testing.expect(std.meta.isError(utc_offset_read(testing.allocator, broken)));
 }
