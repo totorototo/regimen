@@ -10,10 +10,16 @@ const style = (Component) => styled(Component)`
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  max-width: calc(90rem + 2 * var(--gutter));
+  max-width: calc(90rem + 2 * var(--gutter-tool));
   margin: 0 auto;
   /* Clear of the theme toggle fixed in the top-right corner. */
-  padding: 1rem calc(1.25rem + 44px + 1rem) 1rem var(--gutter);
+  padding: 1rem calc(1.25rem + 44px + 1rem) 1rem var(--gutter-tool);
+
+  /* On the start page, the masthead heads the centred column (App.style.js). */
+  &.is-start {
+    max-width: none;
+    padding-left: var(--start-inset);
+  }
   border-bottom: 1px solid var(--color-hairline);
 
   button {
@@ -86,7 +92,7 @@ const style = (Component) => styled(Component)`
 
   @media (max-width: 52em) {
     gap: 0.5rem;
-    padding-right: calc(var(--gutter) + 44px + 0.5rem);
+    padding-right: calc(var(--gutter-tool) + 44px + 0.5rem);
 
     .brand {
       flex-basis: 100%;

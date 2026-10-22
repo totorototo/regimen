@@ -4,11 +4,11 @@ import styled from "styled-components";
 const style = (Component) => styled(Component)`
   display: block;
   width: 100%;
-  padding: clamp(4rem, 14vh, 7rem) clamp(1.5rem, 6vw, 4rem);
+  padding: clamp(4rem, 14vh, 7rem) var(--gutter);
   position: relative;
 
   .section-inner {
-    max-width: 46rem;
+    max-width: var(--measure);
     margin: 0 auto;
     opacity: 0;
     transform: translateY(28px);
@@ -69,7 +69,7 @@ const style = (Component) => styled(Component)`
   }
 
   /* Phones: less air around each section and inside the frames, so the charts keep the
-     width. why: the 1.5rem gutter (not 1.25rem) keeps the frames clear of the dot nav. */
+     width. The padding-right below, not the gutter, keeps the frames clear of the dot nav. */
   @media (max-width: 40em) {
     padding-block: 3rem;
     /* Clear of the dot nav fixed on the right edge (18px wide): the frames stop short of it. */

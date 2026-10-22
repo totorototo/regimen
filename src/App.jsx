@@ -40,6 +40,7 @@ export default function App() {
     <Layout
       $dragging={dragging}
       $story={status === "ready"}
+      $start={status !== "ready"}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
