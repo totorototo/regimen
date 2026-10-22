@@ -14,13 +14,15 @@ const style = (Component) => styled(Component)`
   margin: 0 auto;
   /* Clear of the theme toggle fixed in the top-right corner. */
   padding: 1rem calc(1.25rem + 44px + 1rem) 1rem var(--gutter-tool);
+  border-bottom: 1px solid var(--color-hairline);
 
-  /* On the start page, the masthead heads the centred column (App.style.js). */
+  /* On the start page, the masthead heads the centred column (App.style.js), with no rule
+     under it: nothing below to set apart yet, as on the other apps' start. */
   &.is-start {
     max-width: none;
     padding-left: var(--start-inset);
+    border-bottom: 0;
   }
-  border-bottom: 1px solid var(--color-hairline);
 
   button {
     ${chip}
