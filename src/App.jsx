@@ -54,7 +54,7 @@ export default function App() {
         {status === "idle" && (
           <div className="start">
             <span className="eyebrow">Race plan</span>
-            <h1 className="title">A course, paced and timed</h1>
+            <h2 className="title">A course, paced and timed</h2>
             <p className="lede">
               Open the course from Waymark, set your pace model, and see when you reach each
               checkpoint and how much room you have on its cutoff. Export the plan as plan.json for
@@ -71,7 +71,7 @@ export default function App() {
         {status === "error" && (
           <div className="start" role="alert">
             <span className="eyebrow">Open GPX</span>
-            <h1 className="title">This course could not be read</h1>
+            <h2 className="title">This course could not be read</h2>
             <p className="lede">{gpxHint(error)}</p>
             <div className="ledger">
               <OpenCourse className="ledger-row">Open another GPX</OpenCourse>

@@ -7,16 +7,17 @@ import OpenCourse from "../openFile/OpenCourse.jsx";
 import OpenFile from "../openFile/OpenFile.jsx";
 import style from "./Toolbar.style.js";
 
-function Brand() {
+// On the start page the name is the page's h1; once a course is open, the course's name is.
+function Brand({ as: Tag = "span" }) {
   return (
-    <span className="brand">
+    <Tag className="brand">
       <svg className="mark" viewBox="0 0 64 64" aria-hidden="true">
         <path d={MARK_PATH} fillRule="evenodd" />
       </svg>
       <span>
         <span className="brand-dim">regi</span>men
       </span>
-    </span>
+    </Tag>
   );
 }
 
@@ -30,7 +31,7 @@ function Toolbar({ className }) {
   if (status !== "ready") {
     return (
       <header className={`${className} is-start`}>
-        <Brand />
+        <Brand as="h1" />
       </header>
     );
   }

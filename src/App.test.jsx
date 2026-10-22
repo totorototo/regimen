@@ -13,7 +13,8 @@ describe("App", () => {
 
   it("starts on the page that asks for a course", () => {
     render(<ThemedApp />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/paced and timed/);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("regimen");
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(/paced and timed/);
     expect(screen.getByRole("button", { name: /Open GPX/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Export/ })).not.toBeInTheDocument();
   });

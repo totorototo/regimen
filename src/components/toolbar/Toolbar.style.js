@@ -16,11 +16,14 @@ const style = (Component) => styled(Component)`
   padding: 1rem calc(1.25rem + 44px + 1rem) 1rem var(--gutter-tool);
   border-bottom: 1px solid var(--color-hairline);
 
-  /* On the start page, the masthead heads the centred column (App.style.js), with no rule
-     under it: nothing below to set apart yet, as on the other apps' start. */
+  /* On the start page, the masthead heads the centred column (App.style.js), level with the
+     theme toggle (1.25rem down, 44px high) as the other apps' start, with no rule under it:
+     nothing below to set apart yet. */
   &.is-start {
     max-width: none;
-    padding-left: var(--start-inset);
+    min-height: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 1.25rem) calc(1.25rem + 44px + 1rem) 0
+      var(--start-inset);
     border-bottom: 0;
   }
 
