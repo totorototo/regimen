@@ -7,23 +7,24 @@ export const Layout = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  /* One gutter for the masthead and the page, so the mark and the content share an edge. */
-  --gutter: clamp(1rem, 3vw, 2.5rem);
   outline: ${(props) => (props.$dragging ? "3px dashed var(--color-primary)" : "none")};
   outline-offset: -6px;
+  /* The start page's column: the measure, centred, never closer to the edge than the gutter.
+     The toolbar's masthead reads it too, so the mark sits over the eyebrow. */
+  --start-inset: max(var(--gutter), (100% - var(--measure)) / 2);
 
   main {
     display: flex;
     flex: 1;
     flex-direction: column;
-    padding: 0 var(--gutter);
+    padding: 0 var(--gutter-tool);
   }
 
   .start {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    max-width: 40rem;
+    max-width: var(--measure);
     padding: clamp(3rem, 12vh, 6rem) 0 3rem;
   }
 
@@ -94,7 +95,8 @@ export const Layout = styled.div`
 
   /* The story runs edge to edge: its sections set their own gutters. */
   main {
-    padding-inline: ${(props) => (props.$story ? "0" : "var(--gutter)")};
+    padding-inline: ${(props) =>
+      props.$story ? "0" : props.$start ? "var(--start-inset)" : "var(--gutter-tool)"};
   }
 
   @media (max-width: 52em) {

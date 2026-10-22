@@ -29,7 +29,7 @@ function Toolbar({ className }) {
   // one: nothing to show here but the name.
   if (status !== "ready") {
     return (
-      <header className={className}>
+      <header className={`${className} is-start`}>
         <Brand />
       </header>
     );
