@@ -10,9 +10,9 @@ export const chip = css`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
+  gap: var(--space-2);
   min-height: 44px;
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   background: none;
   border: 1px solid var(--color-control-border);
   border-radius: var(--border-radius-base);
@@ -56,10 +56,10 @@ export const actionButton = css`
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.625rem;
+  gap: var(--space-3);
   width: 100%;
   min-height: 44px;
-  padding: 0.75rem 1.25rem;
+  padding: var(--space-3) var(--space-5);
   background: none;
   border: 1px solid var(--color-control-border);
   border-radius: var(--border-radius-base);
@@ -117,7 +117,7 @@ export const textButton = css`
 export const badge = css`
   display: inline-flex;
   align-items: center;
-  padding: 0.1875rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid currentColor;
   border-radius: var(--border-radius-lg);
   font-family: var(--font-family-mono);

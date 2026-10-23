@@ -65,6 +65,9 @@ zustand, Vite 8, Vitest, Playwright, Zig 0.17 via Zigar.
   `src/theme/Theme.js` only re-exports it. Never edit token values here. Shared control
   styles are fragments in `src/theme/controls.js`. Component styles go in `*.style.js` next
   to the component.
+- Spacing (padding, margin, gap, offsets) is the design system's 4px grid: `var(--space-4)`,
+  never a rem or px literal; a value off the grid rounds up. Fluid spacing shared across
+  screens is a layout token (`--gutter`, `--start-gap`, `--section-block`, `--stat-gap`).
 
 ## Data
 

@@ -8,12 +8,13 @@ const style = (Component) => styled(Component)`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   width: 100%;
   max-width: calc(90rem + 2 * var(--gutter-tool));
   margin: 0 auto;
   /* Clear of the theme toggle fixed in the top-right corner. */
-  padding: 1rem calc(1.25rem + 44px + 1rem) 1rem var(--gutter-tool);
+  padding: var(--space-4) calc(var(--space-5) + var(--touch-target) + var(--space-4)) var(--space-4)
+    var(--gutter-tool);
   border-bottom: 1px solid var(--color-hairline);
 
   /* On the start page, the masthead heads the centred column (App.style.js), level with the
@@ -22,8 +23,8 @@ const style = (Component) => styled(Component)`
   &.is-start {
     max-width: none;
     min-height: 0;
-    padding: calc(env(safe-area-inset-top, 0px) + 1.25rem) calc(1.25rem + 44px + 1rem) 0
-      var(--start-inset);
+    padding: calc(env(safe-area-inset-top, 0px) + var(--space-5))
+      calc(var(--space-5) + var(--touch-target) + var(--space-4)) 0 var(--start-inset);
     border-bottom: 0;
   }
 
@@ -40,9 +41,9 @@ const style = (Component) => styled(Component)`
     ${wordmark}
     display: flex;
     align-items: center;
-    gap: 0.625rem;
+    gap: var(--space-3);
     min-height: 44px;
-    margin-right: 0.5rem;
+    margin-right: var(--space-2);
   }
 
   /* The sachet starts 14 of the mark's 64 in: pulled back to line up with the text below. */
@@ -68,8 +69,8 @@ const style = (Component) => styled(Component)`
     flex-direction: column;
     min-width: 0;
     max-width: 18rem;
-    margin-left: 0.5rem;
-    padding-left: 1.25rem;
+    margin-left: var(--space-2);
+    padding-left: var(--space-5);
     border-left: 1px solid var(--color-hairline);
     font-family: var(--font-family-mono);
   }
@@ -96,8 +97,8 @@ const style = (Component) => styled(Component)`
   }
 
   @media (max-width: 52em) {
-    gap: 0.5rem;
-    padding-right: calc(var(--gutter-tool) + 44px + 0.5rem);
+    gap: var(--space-2);
+    padding-right: calc(var(--gutter-tool) + var(--touch-target) + var(--space-2));
 
     .brand {
       flex-basis: 100%;
@@ -131,7 +132,7 @@ const style = (Component) => styled(Component)`
 
     button.export {
       margin-left: auto;
-      padding-inline: 0.875rem;
+      padding-inline: var(--space-4);
     }
 
     /* "Export" alone fits beside the brand and the theme toggle. */

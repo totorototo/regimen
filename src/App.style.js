@@ -25,12 +25,12 @@ export const Layout = styled.div`
     flex-direction: column;
     align-items: flex-start;
     max-width: var(--measure);
-    padding: clamp(3rem, 12vh, 6rem) 0 3rem;
+    padding: var(--start-gap) 0 var(--space-12);
   }
 
   .start .eyebrow {
     ${eyebrow}
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
   }
 
   .start .title {
@@ -40,28 +40,28 @@ export const Layout = styled.div`
     letter-spacing: -0.04em;
     line-height: 1;
     max-width: 16ch;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
   }
 
   .start .lede {
-    max-width: 42ch;
-    margin-bottom: 2.5rem;
+    max-width: var(--measure-lede);
+    margin-bottom: var(--space-10);
     color: var(--color-text-muted);
   }
 
   .start .ledger {
     width: 100%;
-    max-width: 28rem;
+    max-width: var(--measure-list);
     border-top: 1px solid var(--color-hairline);
   }
 
   .start .ledger-row {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
+    gap: var(--space-4);
     width: 100%;
     min-height: 44px;
-    padding: 1rem 0;
+    padding: var(--space-4) 0;
     background: none;
     border: 0;
     border-bottom: 1px solid var(--color-hairline);
@@ -85,12 +85,12 @@ export const Layout = styled.div`
   }
 
   .start .drop {
-    margin-top: 1.25rem;
+    margin-top: var(--space-5);
   }
 
   .start .note {
     max-width: 40ch;
-    margin-top: 2rem;
+    margin-top: var(--space-8);
   }
 
   /* The story runs edge to edge: its sections set their own gutters. */

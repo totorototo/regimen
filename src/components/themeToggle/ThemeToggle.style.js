@@ -7,8 +7,8 @@ const style = (Component) => styled(Component)`
   /* why not fixed, as in Terminus: here the plan's table runs to the right edge, and a fixed
      button would sit over its last column. It scrolls away with the masthead. */
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 1.25rem);
-  right: calc(env(safe-area-inset-right, 0px) + 1.25rem);
+  top: calc(env(safe-area-inset-top, 0px) + var(--space-5));
+  right: calc(env(safe-area-inset-right, 0px) + var(--space-5));
   z-index: var(--z-index-overlay);
   display: flex;
   align-items: center;

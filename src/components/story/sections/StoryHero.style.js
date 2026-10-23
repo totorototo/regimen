@@ -13,13 +13,13 @@ const style = (Component) => styled(Component)`
     font-size: clamp(2.75rem, 9vw, 5.5rem);
     letter-spacing: -0.04em;
     line-height: 0.98;
-    margin-bottom: 2.5rem;
+    margin-bottom: var(--space-10);
   }
 
   [role="region"] {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--space-8);
     transition: opacity var(--transition-base);
   }
 
@@ -31,7 +31,7 @@ const style = (Component) => styled(Component)`
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 1.5rem clamp(1.5rem, 5vw, 3.5rem);
+    gap: var(--space-6) var(--stat-gap);
   }
 
   .stat {
@@ -40,7 +40,7 @@ const style = (Component) => styled(Component)`
   }
 
   .stat dt {
-    margin-top: 0.375rem;
+    margin-top: var(--space-2);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-small);
     letter-spacing: 0.1em;
@@ -80,7 +80,7 @@ const style = (Component) => styled(Component)`
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.625rem;
+    gap: var(--space-3);
     max-width: 38rem;
     font-size: var(--font-size-medium);
   }

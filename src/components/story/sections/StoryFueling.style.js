@@ -5,13 +5,13 @@ const style = (Component) => styled(Component)`
   .totals {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-4);
   }
 
   .stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5rem clamp(1.5rem, 5vw, 3.5rem);
+    gap: var(--space-6) var(--stat-gap);
   }
 
   .stat {
@@ -20,7 +20,7 @@ const style = (Component) => styled(Component)`
   }
 
   .stat dt {
-    margin-top: 0.375rem;
+    margin-top: var(--space-2);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-small);
     letter-spacing: 0.1em;

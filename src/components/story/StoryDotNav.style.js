@@ -5,7 +5,7 @@ import styled from "styled-components";
 const style = (Component) => styled(Component)`
   position: fixed;
   top: 50%;
-  right: calc(env(safe-area-inset-right, 0px) + 2px);
+  right: calc(env(safe-area-inset-right, 0px) + var(--space-hair));
   transform: translateY(-50%);
   z-index: var(--z-index-overlay);
   display: flex;
@@ -16,10 +16,10 @@ const style = (Component) => styled(Component)`
   .callout {
     position: absolute;
     right: 100%;
-    margin-right: 10px;
+    margin-right: var(--space-3);
     transform: translateY(-50%);
     white-space: nowrap;
-    padding: 0.4rem 0.7rem;
+    padding: var(--space-2) var(--space-3);
     border-radius: var(--border-radius-base);
     background: color-mix(in srgb, var(--color-text) 12%, transparent);
     border: 1px solid var(--color-control-border);
@@ -34,8 +34,8 @@ const style = (Component) => styled(Component)`
   &::before {
     content: "";
     position: absolute;
-    top: 13px;
-    bottom: 13px;
+    top: var(--space-4);
+    bottom: var(--space-4);
     left: 50%;
     width: 1px;
     transform: translateX(-50%);
