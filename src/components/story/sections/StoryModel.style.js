@@ -10,12 +10,12 @@ const style = (Component) => styled(Component)`
   .commands {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-3);
     max-width: 28rem;
   }
 
   .group-label {
-    margin-top: 0.75rem;
+    margin-top: var(--space-3);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-tiny);
     font-weight: var(--font-weight-bold);
@@ -44,7 +44,7 @@ const style = (Component) => styled(Component)`
 
   /* Fueling starts its own group, after the Pace hint. */
   .command.fueling {
-    margin-top: 0.25rem;
+    margin-top: var(--space-1);
   }
 
   /* Set: nothing to press, but the pace in use, not an unavailable command (the fueling
@@ -75,7 +75,7 @@ const style = (Component) => styled(Component)`
     grid-template-columns: minmax(0, 1fr) auto auto auto;
     align-items: center;
     min-height: 44px;
-    padding: 0 0.25rem 0 1.25rem;
+    padding: 0 var(--space-1) 0 var(--space-5);
     border: 1px solid var(--color-control-border);
     border-radius: var(--border-radius-base);
   }
@@ -129,7 +129,7 @@ const style = (Component) => styled(Component)`
   /* A phone: a narrower value slot keeps "LifeBase stop" on one line. */
   @media (max-width: 40em) {
     .stepper {
-      padding-left: 1rem;
+      padding-left: var(--space-4);
     }
 
     .value {

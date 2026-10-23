@@ -10,7 +10,7 @@ const style = (Component) => styled(Component)`
     display: block;
     width: 100%;
     min-height: 44px;
-    margin-top: 1.5rem;
+    margin-top: var(--space-6);
     background: var(--color-background);
     border: 1px dashed var(--color-control-border);
     border-radius: var(--border-radius-base);
@@ -46,8 +46,8 @@ const style = (Component) => styled(Component)`
   .checkpoint {
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
-    padding: 1.5rem 0;
+    gap: var(--space-3);
+    padding: var(--space-6) 0;
     border-bottom: 1px solid var(--color-hairline);
     background: var(--color-background);
   }
@@ -56,13 +56,13 @@ const style = (Component) => styled(Component)`
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--space-4);
   }
 
   .main {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--space-1);
     min-width: 0;
   }
 
@@ -81,7 +81,7 @@ const style = (Component) => styled(Component)`
   .eta {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--space-3);
     white-space: nowrap;
   }
 
@@ -130,7 +130,7 @@ const style = (Component) => styled(Component)`
   .leg {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-small);
     color: var(--color-text-muted);
@@ -164,7 +164,7 @@ const style = (Component) => styled(Component)`
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0 1rem;
+    gap: 0 var(--space-4);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-small);
   }
@@ -178,13 +178,13 @@ const style = (Component) => styled(Component)`
 
   .supplies {
     display: flex;
-    gap: 0.25rem;
+    gap: var(--space-1);
   }
 
   /* Bare words on a 44px target; the chosen one in full ink, underlined. */
   .supply {
     min-height: 44px;
-    padding: 0 0.5rem;
+    padding: 0 var(--space-2);
     background: none;
     border: 0;
     color: var(--color-text-muted);

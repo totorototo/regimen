@@ -19,9 +19,9 @@ const style = (Component) => styled(Component)`
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.25rem 1rem;
+    gap: var(--space-1) var(--space-4);
     min-height: 2rem;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-small);
     color: var(--color-text-muted);
@@ -119,7 +119,7 @@ const style = (Component) => styled(Component)`
     position: absolute;
     width: 7px;
     height: 7px;
-    margin: -3.5px 0 0 -3.5px;
+    margin: calc(-1 * var(--space-1)) 0 0 calc(-1 * var(--space-1));
     border-radius: var(--border-radius-full);
     background: var(--color-text);
     box-shadow: 0 0 0 2px var(--color-background);
@@ -141,7 +141,7 @@ const style = (Component) => styled(Component)`
 
   .plot-label {
     position: absolute;
-    left: 0.25rem;
+    left: var(--space-1);
     transform: translateY(-120%);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-tiny);
@@ -164,8 +164,8 @@ const style = (Component) => styled(Component)`
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1.25rem;
-    margin-top: 1rem;
+    gap: var(--space-2) var(--space-5);
+    margin-top: var(--space-4);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-tiny);
     color: var(--color-text-muted);
@@ -174,7 +174,7 @@ const style = (Component) => styled(Component)`
   .legend-item {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: var(--space-2);
   }
 
   .swatch {
@@ -196,7 +196,7 @@ const style = (Component) => styled(Component)`
   .axis {
     position: relative;
     height: 1.25rem;
-    margin-top: 0.5rem;
+    margin-top: var(--space-2);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-tiny);
     color: var(--color-text-muted);

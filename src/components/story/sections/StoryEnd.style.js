@@ -12,7 +12,7 @@ const style = (Component) => styled(Component)`
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.75rem;
+    gap: var(--space-3);
     max-width: 28rem;
   }
 
@@ -41,7 +41,7 @@ const style = (Component) => styled(Component)`
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--space-3);
     min-height: 44px;
     font-family: var(--font-family-mono);
     font-size: var(--font-size-small);
@@ -55,7 +55,7 @@ const style = (Component) => styled(Component)`
     display: inline-flex;
     align-items: center;
     min-height: 44px;
-    padding: 0.5rem 0.875rem;
+    padding: var(--space-2) var(--space-4);
     background: none;
     border: 1px solid var(--color-control-border);
     border-radius: var(--border-radius-base);

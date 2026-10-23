@@ -4,7 +4,7 @@ import styled from "styled-components";
 const style = (Component) => styled(Component)`
   display: block;
   width: 100%;
-  padding: clamp(4rem, 14vh, 7rem) var(--gutter);
+  padding: var(--section-block) var(--gutter);
   position: relative;
 
   .section-inner {
@@ -30,7 +30,7 @@ const style = (Component) => styled(Component)`
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-text-muted);
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-3);
   }
 
   .title {
@@ -40,7 +40,7 @@ const style = (Component) => styled(Component)`
     letter-spacing: -0.03em;
     line-height: 1;
     color: var(--color-text);
-    margin: 0 0 2rem;
+    margin: 0 0 var(--space-8);
   }
 
   .body {
@@ -52,7 +52,7 @@ const style = (Component) => styled(Component)`
     font-size: var(--font-size-medium);
     color: var(--color-text-muted);
     max-width: 38ch;
-    margin: 0 0 2.5rem;
+    margin: 0 0 var(--space-10);
 
     strong {
       color: var(--color-text);
@@ -63,7 +63,7 @@ const style = (Component) => styled(Component)`
   /* On the ground colour: the route behind the story must not run through a chart. */
   .chart-frame {
     background: var(--color-background);
-    padding: 1.5rem;
+    padding: var(--space-6);
     border-radius: var(--border-radius-lg);
     border: 1px solid var(--color-hairline);
   }
@@ -71,12 +71,13 @@ const style = (Component) => styled(Component)`
   /* Phones: less air around each section and inside the frames, so the charts keep the
      width. The padding-right below, not the gutter, keeps the frames clear of the dot nav. */
   @media (max-width: 40em) {
-    padding-block: 3rem;
-    /* Clear of the dot nav fixed on the right edge (18px wide): the frames stop short of it. */
-    padding-right: 2.25rem;
+    padding-block: var(--space-12);
+    /* Clear of the dot nav fixed on the right edge (18px wide): the frames stop short of it.
+       why space-8, not the 36px rounded up: 40px wraps the hero's three stats to two lines. */
+    padding-right: var(--space-8);
 
     .chart-frame {
-      padding: 1rem;
+      padding: var(--space-4);
       border-radius: var(--border-radius-md);
     }
   }
