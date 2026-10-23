@@ -39,6 +39,7 @@ const style = (Component) => styled(Component)`
     font-weight: var(--font-weight-bold);
     letter-spacing: -0.03em;
     line-height: 1;
+    text-wrap: balance;
     color: var(--color-text);
     margin: 0 0 var(--space-8);
   }
