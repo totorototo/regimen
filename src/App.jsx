@@ -64,7 +64,7 @@ export default function App() {
               <OpenCourse className="ledger-row" />
             </div>
             <p className="drop">or drop the file anywhere on the page</p>
-            <p className="note">The files stay in your browser: nothing is uploaded.</p>
+            <p className="note">The file stays on this device: nothing is uploaded.</p>
           </div>
         )}
         {status === "loading" && <LoadingSpinner label="Reading the course…" />}
